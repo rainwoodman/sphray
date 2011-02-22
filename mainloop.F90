@@ -136,10 +136,27 @@ contains
                     
           !  create a source ray and calc the impacts
           call src_ray_make( ray, psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box )
-          
-          GV%itime = GV%itime + 1
-          GV%TotalPhotonsCast = GV%TotalPhotonsCast + ray%pini
 
+          ! begin stat
+          if (GV%raystats) then
+             
+             raystatcnt = raystatcnt + 1
+             
+             raystats(raystatcnt)%srcn  = srcn
+             raystats(raystatcnt)%start = ray%start  
+             raystats(raystatcnt)%ryd   = ray%freq
+             
+             if (raystatcnt == raystatbuffsize) then
+                write(GV%raystatlun) raystats
+                flush(GV%raystatlun)
+                raystatcnt = 0
+             end if
+                          
+          end if
+          ! done stat 
+          
+          GV%TotalPhotonsCast = GV%TotalPhotonsCast + ray%pini
+          GV%itime = GV%itime + 1
           ! done creation of a ray
 
           ! begin ray tracing and updating 
@@ -150,23 +167,6 @@ contains
                     
           ! done ray tracing and updating
 
-          ! begin stat
-          if (GV%raystats) then
-             
-             raystatcnt = raystatcnt + 1
-             
-             raystats(raystatcnt)%srcn  = srcn
-             raystats(raystatcnt)%start = globalraylist%ray%start  
-             raystats(raystatcnt)%ryd   = globalraylist%ray%freq
-             
-             if (raystatcnt == raystatbuffsize) then
-                write(GV%raystatlun) raystats
-                flush(GV%raystatlun)
-                raystatcnt = 0
-             end if
-                          
-          end if
-          ! done stat 
                               
           
           ! update some really unused global variables only before output
