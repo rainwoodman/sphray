@@ -56,6 +56,7 @@ contains
     
     integer(i8b) :: snapn !< snapshot counter
     integer(i8b) :: rayn  !< ray counter
+    integer(i8b) :: raym  !< ray counter, inner loop
     integer(i8b) :: srcn  !< source counter
     
     real(r8b) :: rn       !< random number
@@ -64,7 +65,7 @@ contains
     ! work variables
     !-----------------
     logical :: srcray
-    type(src_ray_type) :: ray
+    type(src_ray_type), allocatable  :: ray(:)
     real(r8b) :: outmark
     
 #ifdef incHrec
@@ -89,7 +90,7 @@ contains
        call buildtree(psys,tree,MB,GV%PartPerCell)
        GV%MB = GV%MB + MB
        call setparticleorder(psys, tree)             
-       call prepare_raysearch(psys, globalraylist)
+		call prepare_raysearch(psys, globalraylist)
        
       
        if (GV%raystats) then
@@ -115,76 +116,74 @@ contains
        
        ! begin ray tracing 
        !------------------------- 
-       src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays
+       allocate(ray(GV%IonFracOutRays))
+       src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays, GV%IonFracOutRays
 
           
-          ! begin creation of a ray
-          GV%rayn                = GV%rayn + 1
-          GV%src_rayn            = GV%src_rayn + 1
-          GV%TotalSourceRaysCast = GV%TotalSourceRaysCast + 1                
+          do raym = 1, GV%IonFracOutRays
+            ! begin creation of a ray
+            GV%rayn                = GV%rayn + 1
+            GV%src_rayn            = GV%src_rayn + 1
+            GV%TotalSourceRaysCast = GV%TotalSourceRaysCast + 1                
           
-          !  select a source randomly (weighted by their luminosity)
-          rn = genrand_real1() * psys%src(size(psys%src))%Lcdf
-          srcn=1
-          do while(psys%src(srcn)%Lcdf.LT.rn)
-             srcn=srcn+1
-             if(srcn.GT.size(psys%src)) then
-                write(*,*) srcn, rn, psys%src(size(psys%src))%Lcdf, size(psys%src)
-                stop "src num > number of sources in mainloop.f90"
-             endif
-          enddo
+            !  select a source randomly (weighted by their luminosity)
+            rn = genrand_real1() * psys%src(size(psys%src))%Lcdf
+            srcn=1
+            do while(psys%src(srcn)%Lcdf.LT.rn)
+               srcn=srcn+1
+               if(srcn.GT.size(psys%src)) then
+                  write(*,*) srcn, rn, psys%src(size(psys%src))%Lcdf, size(psys%src)
+                  stop "src num > number of sources in mainloop.f90"
+               endif
+            enddo
                     
-          !  create a source ray and calc the impacts
-          call src_ray_make( ray, psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box )
+            !  create a source ray and calc the impacts
+            call src_ray_make( ray(raym), psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box )
 
-          ! begin stat
-          if (GV%raystats) then
+            ! begin stat
+            if (GV%raystats) then
              
-             raystatcnt = raystatcnt + 1
+               raystatcnt = raystatcnt + 1
              
-             raystats(raystatcnt)%srcn  = srcn
-             raystats(raystatcnt)%start = ray%start  
-             raystats(raystatcnt)%ryd   = ray%freq
+               raystats(raystatcnt)%srcn  = srcn
+               raystats(raystatcnt)%start = ray(raym)%start  
+               raystats(raystatcnt)%ryd   = ray(raym)%freq
              
-             if (raystatcnt == raystatbuffsize) then
-                write(GV%raystatlun) raystats
-                flush(GV%raystatlun)
-                raystatcnt = 0
-             end if
+               if (raystatcnt == raystatbuffsize) then
+                  write(GV%raystatlun) raystats
+                  flush(GV%raystatlun)
+                  raystatcnt = 0
+               end if
                           
-          end if
+            end if
           ! done stat 
           
-          GV%TotalPhotonsCast = GV%TotalPhotonsCast + ray%pini
-          GV%itime = GV%itime + 1
+            GV%TotalPhotonsCast = GV%TotalPhotonsCast + ray(raym)%pini
           ! done creation of a ray
+          enddo
 
-          ! begin ray tracing and updating 
-          call trace_ray(ray, globalraylist, psys, tree) 
+          do raym = 1, GV%IonFracOutRays
+            GV%itime = GV%itime + 1
+            call set_time_elapsed_from_itime( GV )
+
+            ! begin ray tracing and updating 
+            call trace_ray(ray(raym), globalraylist, psys, tree) 
           
-          srcray = .true.
-          call update_raylist(globalraylist,psys%par,psys%box,srcray)
+            srcray = .true.
+            call update_raylist(globalraylist,psys%par,psys%box,srcray)
                     
-          ! done ray tracing and updating
+            ! done ray tracing and updating
 
-                              
-          
+          enddo
+
           ! update some really unused global variables only before output
           ! yfeng1
-          call set_time_elapsed_from_itime( GV )
           GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
 
           !        output routines
           !------------------------
-          
-          !        check if this time step requires a small ionization frac output
-          !        these are small outputs done often to monitor certain quantites
-          ! yfeng1: I am going to take this parameter as the number of rays simultenously
-          !  traced.
-          if( mod(GV%rayn,GV%IonFracOutRays)==0 ) then
-             call ion_frac_out(psys, tree )
-          end if
-          
+          ! a patch of IonFracOutRays has been processed, write output
+          call ion_frac_out(psys, tree )
           
           ! check if this time step requires a full output
           if ( GV%OutputIndx <= GV%NumTotOuts ) then
