@@ -384,6 +384,7 @@ contains
 
    logical :: wantsort
 
+   raylist%ray = ray
    wantsort = .true.
    if (present(dosort)) then
       if (.not. dosort) wantsort = .false.

@@ -118,6 +118,7 @@ contains
        src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays
 
           
+          ! begin creation of a ray
           GV%rayn                = GV%rayn + 1
           GV%src_rayn            = GV%src_rayn + 1
           GV%TotalSourceRaysCast = GV%TotalSourceRaysCast + 1                
@@ -137,17 +138,19 @@ contains
           call src_ray_make( ray, psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box )
           
           GV%itime = GV%itime + 1
-          call set_time_elapsed_from_itime( GV )
-          GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
+          GV%TotalPhotonsCast = GV%TotalPhotonsCast + ray%pini
 
-          globalraylist%ray = ray
-          call trace_ray(globalraylist%ray, globalraylist, psys, tree) 
-          
-          GV%TotalPhotonsCast = GV%TotalPhotonsCast + globalraylist%ray%pini
+          ! done creation of a ray
+
+          ! begin ray tracing and updating 
+          call trace_ray(ray, globalraylist, psys, tree) 
           
           srcray = .true.
           call update_raylist(globalraylist,psys%par,psys%box,srcray)
                     
+          ! done ray tracing and updating
+
+          ! begin stat
           if (GV%raystats) then
              
              raystatcnt = raystatcnt + 1
@@ -163,14 +166,21 @@ contains
              end if
                           
           end if
-          
+          ! done stat 
                               
           
+          ! update some really unused global variables only before output
+          ! yfeng1
+          call set_time_elapsed_from_itime( GV )
+          GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
+
           !        output routines
           !------------------------
           
           !        check if this time step requires a small ionization frac output
           !        these are small outputs done often to monitor certain quantites
+          ! yfeng1: I am going to take this parameter as the number of rays simultenously
+          !  traced.
           if( mod(GV%rayn,GV%IonFracOutRays)==0 ) then
              call ion_frac_out(psys, tree )
           end if
