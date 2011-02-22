@@ -21,7 +21,6 @@ module mainloop_mod
   
   ! variables
   use global_mod, only: psys
-  use global_mod, only: globalraylist
   use global_mod, only: tree
   use global_mod, only: GV
   use global_mod, only: PLAN
@@ -42,6 +41,7 @@ contains
   subroutine mainloop()
     implicit none
     
+    type(raylist_type) :: globalraylist       !< ray/particle intersections
     character(clen), parameter :: myname="mainloop"
     logical, parameter :: crash=.true.
     integer, parameter :: verb=1

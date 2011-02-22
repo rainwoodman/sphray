@@ -39,7 +39,6 @@ end type run_planning_type
 ! global variables
 !=====================
 type(particle_system_type) :: psys        !< particles + sources + box
-type(raylist_type) :: globalraylist       !< ray/particle intersections
 type(oct_tree_type) :: tree               !< octree
 
 type(atomic_rates_table_type) :: rtable   !< rates read in from file
