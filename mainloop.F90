@@ -41,7 +41,7 @@ contains
   subroutine mainloop()
     implicit none
     
-    type(raylist_type) :: globalraylist       !< ray/particle intersections
+    type(raylist_type) :: raylist       !< ray/particle intersections
     character(clen), parameter :: myname="mainloop"
     logical, parameter :: crash=.true.
     integer, parameter :: verb=1
@@ -90,7 +90,6 @@ contains
        call buildtree(psys,tree,MB,GV%PartPerCell)
        GV%MB = GV%MB + MB
        call setparticleorder(psys, tree)             
-		call prepare_raysearch(psys, globalraylist)
        
       
        if (GV%raystats) then
@@ -167,13 +166,16 @@ contains
             call set_time_elapsed_from_itime( GV )
 
             ! begin ray tracing and updating 
-            call trace_ray(ray(raym), globalraylist, psys, tree) 
+            call prepare_raysearch(psys, raylist)
+            call reset_raylist(raylist, ray(raym))
+            call trace_ray(ray(raym), raylist, psys, tree) 
           
             srcray = .true.
-            call update_raylist(globalraylist,psys%par,psys%box,srcray)
+            call update_raylist(raylist,psys%par,psys%box,srcray)
                     
             ! done ray tracing and updating
-
+            ! free up the memory from the globalraylist.
+            call kill_raylist(raylist)
           enddo
 
           ! update some really unused global variables only before output
@@ -237,8 +239,6 @@ contains
 
 
        
-       ! free up the memory from the globalraylist.
-       call kill_raylist(globalraylist)
        
     end do snaps
     

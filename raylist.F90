@@ -20,6 +20,7 @@ implicit none
  public :: raylist_type
  public :: prepare_raysearch
  public :: kill_raylist
+ public :: reset_raylist
 
  real, parameter :: zero = 0.0d0
  real, parameter :: half = 0.5d0
@@ -384,7 +385,6 @@ contains
 
    logical :: wantsort
 
-   raylist%ray = ray
    wantsort = .true.
    if (present(dosort)) then
       if (.not. dosort) wantsort = .false.
