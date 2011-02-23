@@ -53,6 +53,7 @@ implicit none
       type(src_ray_type) :: ray   !< ray 
       type(transformation_type) :: trafo(nimages)  !< transformations  
       type(intersection_type), allocatable :: intersection(:) !< ray/par 
+      logical :: allocated        ! is the intesection array already allocated? stupid fortran can't test this!
    end type raylist_type
 
 
@@ -193,7 +194,7 @@ contains
    type(src_ray_type),optional :: ray  !< the ray
    real(r8b) :: start(ndim)
    real(r8b) :: dir(ndim)
-  
+
      raylist%nnb            = 0
      raylist%maxnnb         = maxnnb
      raylist%searchcell     = 1
@@ -390,11 +391,6 @@ contains
       if (.not. dosort) wantsort = .false.
    endif
 
-   if (raylist%maxnnb /= MAX_RAYLIST_LENGTH) then      
-      call prepare_raysearch(psys, raylist)
-   end if
-
-   call reset_raylist(raylist, ray)
    call fullsearch(psys, searchtree, raylist)
 
    if (wantsort) call sort3_raylist(raylist)

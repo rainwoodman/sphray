@@ -104,13 +104,13 @@ subroutine update_raylist(raylist, pars, box, srcray)
      ! check we dont have double intersections when we shouldn't
      !-------------------------------------------------------------
      if (srcray) then
-        if (box%tbound(1)==1 .and. GV%itime == par%lasthit) then
+        if (box%tbound(1)==1 .and. raylist%ray%itime == par%lasthit) then
            ! here we have periodic BCs and a particle has been hit
            ! twice by the same ray so we stop tracing 
            GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + raylist%ray%pcnt
            raylist%lastnnb = impact-1
            exit
-        else if (box%tbound(1)==0 .and. GV%itime == par%lasthit) then
+        else if (box%tbound(1)==0 .and. raylist%ray%itime == par%lasthit) then
            ! here we have transmissive BCs and a particle has been hit
            ! twice by the same ray so something is wrong
            write(*,*) "transmissive BCs and particle hit twice in one ray!"
@@ -162,7 +162,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
      pars(ipar%index) = par
 
      if (srcray) then
-        pars(ipar%index)%lasthit = GV%itime 
+        pars(ipar%index)%lasthit = raylist%ray%itime 
      end if
 
 

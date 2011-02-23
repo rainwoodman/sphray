@@ -51,6 +51,7 @@ type src_ray_type
    real(r8b) :: pcnt      !< photon count (changes as the ray is depleted)
    real(r8b) :: pini      !< initial photons
    real(r8b) :: dt_s      !< time step associated with ray [s]
+   integer(i8b) :: itime  !< integer time the ray is created
 end type src_ray_type
 
 

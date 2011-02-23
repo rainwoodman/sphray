@@ -555,8 +555,8 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
      ipar%bnorm = ipar%b / ipar%hsml
      ipar%cdfac = b2cdfac(ipar%bnorm,ipar%hsml,GV%cgs_len)
 
-     ipar%dt_code = (GV%itime - ipar%lasthit) * GV%dt_code
-     ipar%dt_s    = (GV%itime - ipar%lasthit) * GV%dt_s
+     ipar%dt_code = (raylist%ray%itime - ipar%lasthit) * GV%dt_code
+     ipar%dt_s    = (raylist%ray%itime - ipar%lasthit) * GV%dt_s
      
      ipar%pdeps    = 0.0d0
      ipar%pdeps_eq = 0.0d0

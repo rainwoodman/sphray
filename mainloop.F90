@@ -17,7 +17,6 @@ module mainloop_mod
   use ion_temperature_update, only: update_raylist
   use mt19937_mod, only: genrand_real1
   use output_mod, only: output_total_snap, ion_frac_out
-  use global_mod, only: set_dt_from_dtcode, set_time_elapsed_from_itime
   
   ! variables
   use global_mod, only: psys
@@ -33,14 +32,13 @@ module mainloop_mod
 
   integer(i4b), parameter :: rays_per_leaf = 2
   integer(i4b), parameter :: rays_per_dt = 1
-  
 contains
   
   !> this is the main driver of SPHRAY
   !======================================
   subroutine mainloop()
     implicit none
-    
+    integer tid, omp_get_thread_num
     type(raylist_type) :: raylist       !< ray/particle intersections
     character(clen), parameter :: myname="mainloop"
     logical, parameter :: crash=.true.
@@ -157,13 +155,17 @@ contains
             end if
           ! done stat 
           
+            GV%itime = GV%itime + 1
+            ray(raym)%itime = GV%itime
             GV%TotalPhotonsCast = GV%TotalPhotonsCast + ray(raym)%pini
           ! done creation of a ray
           enddo
 
+         !$OMP PARALLEL FIRSTPRIVATE(raym, raylist,srcray, TID) SHARED(ray)
+         TID = OMP_GET_THREAD_NUM()
+         PRINT *, 'Hellow from thread', TID
+         !$OMP DO SCHEDULE(DYNAMIC, 100)
           do raym = 1, GV%IonFracOutRays
-            GV%itime = GV%itime + 1
-            call set_time_elapsed_from_itime( GV )
 
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylist)
@@ -177,10 +179,11 @@ contains
             ! free up the memory from the globalraylist.
             call kill_raylist(raylist)
           enddo
-
+         !$OMP END DO
+         !$OMP END PARALLEL
           ! update some really unused global variables only before output
           ! yfeng1
-          GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
+          GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / (GV%itime * GV%dt_s)
 
           !        output routines
           !------------------------
@@ -193,14 +196,14 @@ contains
              ! set correct time marker unit
              if ( trim(GV%OutputTiming) == "standard" ) then
                 
-                outmark = GV%start_time_code + GV%time_elapsed_code
+                outmark = GV%start_time_code + GV%itime * GV%dt_code
                 
              else if ( trim(GV%OutputTiming) == "forced" ) then
                 
                 if (trim(GV%ForcedUnits) == "mwionfrac") then
                    outmark = GV%mwionfrac
                 else 
-                   outmark = GV%time_elapsed_code
+                   outmark = GV%itime * GV%dt_code
                 end if
                 
              else

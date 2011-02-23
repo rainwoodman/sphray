@@ -55,7 +55,7 @@ contains
 
     ghead%a = PLAN%snap(GV%CurSnapNum)%ScalefacAt
     ghead%z = saved_gheads(GV%CurSnapNum,fnum)%z
-    ghead%time_gyr = GV%time_elapsed_myr / 1.0d3
+    ghead%time_gyr = GV%itime * GV%dt_myr / 1.0d3
 
     ghead%boxlen   = saved_gheads(GV%CurSnapNum,fnum)%boxlen
     ghead%OmegaM   = saved_gheads(GV%CurSnapNum,fnum)%OmegaM
@@ -168,8 +168,8 @@ contains
      write(*,*) 'output number: ', GV%OutputIndx
      write(*,*) 'output type:   ', GV%OutputType
      write(*,*) "writing total state of system"
-     write(*,*) "time (elapsed code) ", GV%time_elapsed_code
-     write(*,*) "time (elapsed myr)  ", GV%time_elapsed_myr
+     write(*,*) "time (elapsed code) ", GV%itime * GV%dt_code
+     write(*,*) "time (elapsed myr)  ", GV%itime * GV%dt_myr
 
      if (GV%Comoving) then
         call particle_system_scale_physical_to_comoving(psys, scale, hub)
@@ -577,9 +577,9 @@ contains
      write(*,*) 
 
      write(*,100) "time elapsed:", "code units", "Myrs", "seconds"
-     write(*,105) GV%time_elapsed_code, &
-                  GV%time_elapsed_myr, &
-                  GV%time_elapsed_s
+     write(*,105) GV%itime * GV%dt_code, &
+                  GV%itime * GV%dt_myr, &
+                  GV%itime * GV%dt_s
      write(*,*) 
 
 
@@ -599,7 +599,7 @@ contains
 
      150 format (6ES15.5)
      write(GV%ionlun,150) GV%start_time_myr, &
-                          GV%time_elapsed_myr, &
+                          GV%itime * GV%dt_myr, &
                           1.0d0-Nionfrac, 1.0d0-Mionfrac, 1.0d0-Vionfrac
 
      write(*,100) "rays cast:", "source", "diffuse", "diffuse/source"

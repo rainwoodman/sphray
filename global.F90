@@ -275,14 +275,14 @@ end subroutine set_dt_from_dtcode
 
 
 
-subroutine set_time_elapsed_from_itime( GV )
-  type(global_variables_type), intent(inout) :: GV
-
-  GV%time_elapsed_code = GV%itime * GV%dt_code
-  GV%time_elapsed_s    = GV%itime * GV%dt_s
-  GV%time_elapsed_myr  = GV%itime * GV%dt_myr
-
-end subroutine set_time_elapsed_from_itime
+!subroutine set_time_elapsed_from_itime( GV )
+!  type(global_variables_type), intent(inout) :: GV
+!
+!  GV%time_elapsed_code = GV%itime * GV%dt_code
+!  GV%time_elapsed_s    = GV%itime * GV%dt_s
+!  GV%time_elapsed_myr  = GV%itime * GV%dt_myr
+!
+!end subroutine set_time_elapsed_from_itime
 
 
 
