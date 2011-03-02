@@ -52,6 +52,7 @@ type src_ray_type
    real(r8b) :: pini      !< initial photons
    real(r8b) :: dt_s      !< time step associated with ray [s]
    integer(i8b) :: itime  !< integer time the ray is created
+   integer(i8b) :: rayn   !< integer id of the ray, not sure if useful at all, replacing GV%rayn
 end type src_ray_type
 
 
@@ -98,6 +99,7 @@ contains
 !  note that for all point sources the luminosity is interpreted as a Flux 
 !  [photons/s].  
 
+    ray%rayn = rayn
     select case (src%EmisPrf)
        
     ! this makes rays go in -z direction  

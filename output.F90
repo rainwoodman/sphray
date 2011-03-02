@@ -679,6 +679,7 @@ contains
         endif
      end do
      write(*,161) "Fraction Not Hit = ", real(nothit) / size(psys%par)
+     write(*,*) "Oops,hits  = ", GV%rayoops, GV%totalhits
 
 
 ! do test specific outputs

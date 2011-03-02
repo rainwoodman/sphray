@@ -56,6 +56,7 @@ contains
     integer(i8b) :: rayn  !< ray counter
     integer(i8b) :: raym  !< ray counter, inner loop
     integer(i8b) :: srcn  !< source counter
+    integer(i8b) :: rayoops !< count of lasthit > ray%itime
     
     real(r8b) :: rn       !< random number
     real(r8b) :: MB       !< MBs for memory consumption tracking
@@ -114,6 +115,9 @@ contains
        ! begin ray tracing 
        !------------------------- 
        allocate(ray(GV%IonFracOutRays))
+       GV%rayoops = 0
+       GV%totalhits = 0
+
        src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays, GV%IonFracOutRays
 
           
@@ -161,20 +165,21 @@ contains
           ! done creation of a ray
           enddo
 
-         !$OMP PARALLEL FIRSTPRIVATE(raym, raylist,srcray, TID) SHARED(ray)
+         !$OMP PARALLEL FIRSTPRIVATE(raym, raylist,srcray, rayoops, TID) SHARED(ray)
          TID = OMP_GET_THREAD_NUM()
-         PRINT *, 'Hellow from thread', TID
-         !$OMP DO SCHEDULE(DYNAMIC, 100)
+         PRINT *, 'Hello from thread', TID
+         !$OMP DO SCHEDULE(DYNAMIC, 1)
           do raym = 1, GV%IonFracOutRays
-
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylist)
             call reset_raylist(raylist, ray(raym))
             call trace_ray(ray(raym), raylist, psys, tree) 
-          
             srcray = .true.
             call update_raylist(raylist,psys%par,psys%box,srcray)
-                    
+            !$OMP ATOMIC
+            GV%rayoops = GV%rayoops + raylist%rayoops
+            !$OMP ATOMIC
+            GV%totalhits = GV%totalhits + raylist%lastnnb
             ! done ray tracing and updating
             ! free up the memory from the globalraylist.
             call kill_raylist(raylist)
@@ -189,7 +194,7 @@ contains
           !------------------------
           ! a patch of IonFracOutRays has been processed, write output
           call ion_frac_out(psys, tree )
-          
+
           ! check if this time step requires a full output
           if ( GV%OutputIndx <= GV%NumTotOuts ) then
              

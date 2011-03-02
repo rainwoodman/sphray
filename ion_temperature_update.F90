@@ -92,6 +92,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
   
   ! loop through the ray particle intersections
   !-------------------------------------------------------
+  raylist%rayoops = 0
   impact_loop: do impact = 1,raylist%nnb
 
      GV%ParticleCrossings = GV%ParticleCrossings + 1     
@@ -120,7 +121,10 @@ subroutine update_raylist(raylist, pars, box, srcray)
            stop
         end if
      end if
-
+     if (raylist%ray%itime < par%lasthit) then
+         raylist%rayoops = raylist%rayoops + 1
+         cycle
+     endif
      call initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
 

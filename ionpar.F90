@@ -487,7 +487,7 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
   ! set values that are static during the update
   !-----------------------------------------------
-  ipar%rayn     = GV%rayn
+  ipar%rayn     = raylist%ray%rayn
 
   ipar%NeBckgnd = GV%NeBackground
   ipar%Tcmb     = GV%Tcmb_cur
@@ -1197,7 +1197,7 @@ subroutine check_x(ip)
 
   if (bad) then
      call ionpar2screen(ip)
-     stop
+     call tracebackqq()
   end if
 
 end subroutine check_x

@@ -46,6 +46,7 @@ implicit none
       integer :: nnb              !< number of intersections
       integer :: maxnnb           !< maximum number of intersections
       integer :: lastnnb          !< intersection where we stopped
+      integer :: rayoops          !< counts of ray:itime < lasthit
       integer(i8b) :: searchcell  !< index of cell being searched
       logical :: reuseable        !< is this ray reusable?
       integer :: searchimage      !< which transformation of the particles?
