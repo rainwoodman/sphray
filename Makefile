@@ -122,7 +122,6 @@ OBJS =  myf03.o \
 		octtree3.o \
 		global.o \
 		$(READERS) \
-		sobol.o \
 		update_particles.o \
 		b2cd.o \
 		spectra.o \
