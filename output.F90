@@ -553,7 +553,6 @@ contains
 !> writes the global ionization state of the system to a file
 !=============================================================
   subroutine ion_frac_out(psys,tree)
-  use iliev_comparison_project_mod
 
      type(particle_system_type), intent(in) :: psys    !< particle system
      type(oct_tree_type), intent(in) :: tree
@@ -681,19 +680,6 @@ contains
      write(*,161) "Fraction Not Hit = ", real(nothit) / size(psys%par)
      write(*,*) "Oops,hits  = ", GV%rayoops, GV%totalhits
 
-
-! do test specific outputs
-     if (GV%DoTestScenario) then
-        if (GV%TestScenario=="iliev_test1") then
-           call iliev_test1_screen_out(psys,tree,GV)
-        else if (GV%TestScenario=="iliev_test2") then
-           call iliev_test2_screen_out(psys,tree,GV)
-        else if (GV%TestScenario=="iliev_test3") then
-           call iliev_test3_screen_out(psys,GV)
-        else if (GV%TestScenario=="iliev_test4") then
-           call iliev_test4_screen_out(psys,GV)
-        end if
-     end if
 
      write(*,*) 
 

@@ -131,7 +131,6 @@ SRC= 	myf03.o \
 	ionpar.o \
 	euler.o \
 	bdf.o \
-	iliev_comparison_project.o \
 	output.o \
 	ion_temperature_update.o \
 	initialize.o \

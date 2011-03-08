@@ -14,7 +14,6 @@ use b2cd_mod, only: read_b2cd_file
 use spectra_mod, only: read_spectra_file
 use atomic_rates_mod, only: read_atomic_rates_file, get_atomic_rates 
 use atomic_rates_mod, only: write_atomic_rates_to_log_file
-use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
 use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
 use particle_system_mod, only: return_bytes_per_particle
@@ -48,8 +47,6 @@ subroutine initialize(config_file)
   if (GV%IsoTemp > 0.0) then
      call get_atomic_rates(GV%IsoTemp, rtable, isoT_k)
   end if
-
-  call initialize_iliev_tests()
 
   call get_planning_data()
 
