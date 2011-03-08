@@ -1,0 +1,15 @@
+FC= ifort
+IFORTFLAGS= -openmp -ftz -fpe0 -g -traceback -fpp 
+FFLAGS= $(IFORTFLAGS) -C
+
+ISLIB= -L
+ISINC= -I
+ISMOD= -I
+ISRLIB= -Wl,-rpath=
+
+DIRHDF=
+
+IFORTRLIB= $(ISRLIB)/opt/intel/fce/10.1.015/lib
+
+
+OPT += $(IFORTRLIB)
