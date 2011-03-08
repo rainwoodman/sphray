@@ -15,8 +15,6 @@ private
 public :: particle_type
 public :: particle_copy
 public :: particle_transform
-public :: particle_set_ye
-public :: particle_set_ci_eq
 
 public :: box_type
 public :: box_adjust

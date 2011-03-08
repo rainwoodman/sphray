@@ -107,35 +107,23 @@ READERS =  \
 		readers/gadget_public_input_hdf5.o \
 		$(NULL)
 
-OBJS =  myf03.o \
-		mt19937.o \
-		m_mrgrnk.o \
-		hui_gnedin_atomic_rates.o \
-		cen_atomic_rates.o \
-		hummer_atomic_rates.o  \
-		atomic_rates.o \
-		physical_constants.o \
-		cosmology.o \
-		particle_system.o \
-		gadget_general_class.o \
-		gadget_sphray_header_class.o \
-		octtree3.o \
-		global.o \
-		$(READERS) \
-		update_particles.o \
-		b2cd.o \
-		spectra.o \
-		sphpar.o \
-		ray.o \
-		raylist.o \
-		config.o \
-		source_input.o \
-		main_input.o \
-		ionpar.o \
-		euler.o \
-		bdf.o \
-		output.o \
-		ion_temperature_update.o \
+RATES = \
+		rates/hui_gnedin_atomic_rates.o \
+		rates/cen_atomic_rates.o \
+		rates/hummer_atomic_rates.o  \
+		rates/atomic_rates.o \
+		$(NULL)
+
+OBJS =  myf03.o mt19937.o m_mrgrnk.o \
+		$(RATES) \
+		physical_constants.o cosmology.o \
+		b2cd.o spectra.o \
+		particle_system.o octtree3.o \
+		gadget_general_class.o gadget_sphray_header_class.o \
+		global.o config.o \
+		ray.o raylist.o \
+		ionpar.o euler.o bdf.o ion_temperature_update.o \
+		$(READERS) update_particles.o source_input.o main_input.o output.o \
 		initialize.o \
 		mainloop.o \
 		$(NULL)
@@ -191,7 +179,7 @@ screen: Makefile
 # Main SPHRAY application
 #=============================================================================
 sphray: $(OBJS) sphray.o
-	$(FC) -I readers/ $(FFLAGS) $^ $(OPT) $(FNAME) $@
+	$(FC) -I rates/ -I readers/ $(FFLAGS) $^ $(OPT) $(FNAME) $@
 
 
 # HDF5 modules
