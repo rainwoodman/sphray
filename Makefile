@@ -85,12 +85,6 @@ endif
 include makes/make.warp.opt
 
 
-#=============================================================================
-#=============================================================================
-CC= gcc
-CFLAGS= -O3
-
-
 APPS= screen sphray 
 
 #--------------------
@@ -161,9 +155,6 @@ OPT += $(OPTHDF)
 F2OBJ= -c    # Fortran flag to compile to object without linking
 FNAME= -o    # Fortran flag to name output file
 
-C2OBJ= -c    # C flag to compile to object without linking
-CNAME= -o    # C flag to name output file
-
 all:$(APPS)
 
 
@@ -193,17 +184,6 @@ gadget_input_hdf5.o: gadget_input_hdf5.F90
 
 %.o: %.F90 
 	$(FC) $(FFLAGS) $(OPT) $(F2OBJ) $< $(FNAME) $@
-
-%.o: %.f90 
-	$(FC) $(FFLAGS) $(F2OBJ) $< $(FNAME) $@
-
-%.o: %.f 
-	$(FC) $(FFLAGS) $(F2OBJ) $< $(FNAME) $@
-
-%.o: %.c
-	$(CC) $(CFLAGS) $(C2OBJ) $< $(CNAME) $@
-
-
 
 
 # Standard Cleaning Targets
