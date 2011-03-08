@@ -8,28 +8,9 @@
 ##############################################################################
 
 NULL = 
-# Runtime Macros 
-#=============================================================================
-#
-# These control the particle data structure and the code operation 
-# in the case of the recombination macros.  The default is for all
-# these flags to be commented out. 
+OPT = $(NULL)
 
-#OPT += -DincHe      # if you want to include Helium
-#OPT += -DoutGammaHI # if you want to output HI photoionization rate
-
-#OPT += -DincHmf     # if you want individual Hydrogen mass fractions
-#OPT += -DincHemf    # if you want individual Helium mass fractions
-
-#OPT += -DincEOS     # store equation of state variable 
-#OPT += -DincSFR     # store star formation rate
-#OPT += -DincCloudy  # store CLOUDY eq. ionization values for particles
-
-#OPT += -DuseHDF5    # if you are using the hdf5 library for anything
-
-#OPT += -DOWLS       # selects input as an OWLS snapshot
-#OPT += -DGIMIC      # selects input as a GIMIC snapshot
-
+include Makefile.local
 
 ifeq (OWLS,$(findstring OWLS, $(OPT)))	
    OPT += -DincHmf
@@ -47,42 +28,6 @@ ifeq (GIMIC,$(findstring GIMIC, $(OPT)))
    OPT += -DincCloudy
    OPT += -DincEOS
 endif
-
-
-
-# System Definitions
-#=============================================================================
-#
-# In order for the Makefile to work you have to design an include file
-# for your system that sets certain variables.  Please look in the 
-# makes directory for examples.  Right now, I have examples for three 
-# fortran compilers.  gfortran is in make.blue-velvet.serial.opt, ifort
-# is in make.santabuntu.serial.opt, and the sun compiler is in 
-# make.icc-graphics.serial.opt
-#
-
-#include makes/make.icc-graphics.serial.debug
-#include makes/make.icc-graphics.serial.opt
-
-#include makes/make.xgpc.serial.debug
-#include makes/make.xgpc.serial.opt
-
-#include makes/make.ferrari.serial.opt
-
-#include makes/make.cosma.serial.debug
-#include makes/make.cosma.serial.opt
-
-#include makes/make.santabuntu.serial.opt
-#include makes/make.santabuntu.serial.debug
-
-#include makes/make.blue-velvet.serial.gfortran.debug
-
-#include makes/make.blue-velvet.serial.intel.debug
-#include makes/make.blue-velvet.serial.intel.opt
-
-#include makes/make.titania.serial.debug
-
-include makes/make.warp.opt
 
 
 APPS= screen sphray 
@@ -157,13 +102,25 @@ FNAME= -o    # Fortran flag to name output file
 
 all:$(APPS)
 
+# Update the local Makefile.local
+# ========================================
+Makefile.local: Makefile.local.template
+	@if ! [ -f Makefile.local ]; then \
+		cp $< $@ && \
+		touch $< && \
+		echo $@ is created from Makefile.local.template; \
+	else \
+		echo $< updated; \
+	fi;
+	@echo Please edit/touch Makefile.local before make again;
+	@exit 1
+
 
 # Just Dummy Reporting
 #=============================================================================
 screen: Makefile
 	@echo
 	@echo "OPT=    " $(OPT)
-	@echo "SYSTEM= " $(SYSTEM)
 	@echo
 
 #
