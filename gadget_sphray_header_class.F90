@@ -8,8 +8,6 @@
 module gadget_sphray_header_class
 use myf03_mod
 use gadget_general_class
-use gadget_public_header_class
-use gadget_owls_header_class
 
 #ifdef useHDF5
 use hdf5_wrapper
@@ -19,8 +17,6 @@ implicit none
 private
 
 public :: gadget_sphray_header_type
-public :: gadget_sphray_header_copy_public
-public :: gadget_sphray_header_copy_owls
 public :: gadget_sphray_header_write_lun
 public :: gadget_sphray_header_hdf5_write_lun
 
@@ -125,60 +121,6 @@ subroutine gadget_sphray_header_hdf5_write_lun(this, fh)
 end subroutine gadget_sphray_header_hdf5_write_lun
 
 
-!> copies an OWLS/GIMIC header into the sphray style header
-!--------------------------------------------------------------
-subroutine gadget_sphray_header_copy_owls( this, owlshead )
-  type(gadget_sphray_header_type) :: this
-  type(gadget_owls_header_type) :: owlshead
-
-  this%npar_file(0:5)   = owlshead%npar_file(0:5)   
-  this%mass(0:5)        = owlshead%mass(0:5)        
-  this%a                = owlshead%a                
-  this%z                = owlshead%z                
-  this%flag_sfr         = owlshead%flag_sfr         
-  this%flag_feedback    = owlshead%flag_feedback    
-  this%npar_all(0:5)    = owlshead%npar_all(0:5)    
-  this%flag_cooling     = owlshead%flag_cooling     
-  this%nfiles           = owlshead%nfiles           
-  this%boxlen           = owlshead%boxlen           
-  this%OmegaM           = owlshead%OmegaM           
-  this%OmegaL           = owlshead%OmegaL           
-  this%h                = owlshead%h                
-  this%flag_age         = owlshead%flag_age         
-  this%flag_metals      = owlshead%flag_metals      
-  this%npar_hw(0:5)     = owlshead%npar_hw(0:5)     
-
-  this%OmegaB           = owlshead%OmegaB
-  this%time_gyr         = owlshead%time_gyr
-
-end subroutine gadget_sphray_header_copy_owls
-
-
-!> copies a Public header into the sphray style header
-!--------------------------------------------------------------
-subroutine gadget_sphray_header_copy_public( this, pubhead )
-  type(gadget_sphray_header_type) :: this
-  type(gadget_public_header_type) :: pubhead
-
-  this%npar_file(0:5)   = pubhead%npar_file(0:5)   
-  this%mass(0:5)        = pubhead%mass(0:5)        
-  this%a                = pubhead%a                
-  this%z                = pubhead%z                
-  this%flag_sfr         = pubhead%flag_sfr         
-  this%flag_feedback    = pubhead%flag_feedback    
-  this%npar_all(0:5)    = pubhead%npar_all(0:5)    
-  this%flag_cooling     = pubhead%flag_cooling     
-  this%nfiles           = pubhead%nfiles           
-  this%boxlen           = pubhead%boxlen           
-  this%OmegaM           = pubhead%OmegaM           
-  this%OmegaL           = pubhead%OmegaL           
-  this%h                = pubhead%h                
-  this%flag_age         = pubhead%flag_age         
-  this%flag_metals      = pubhead%flag_metals      
-  this%npar_hw(0:5)     = pubhead%npar_hw(0:5)     
-  this%flag_entr_ics    = pubhead%flag_entr_ics    
-
-end subroutine gadget_sphray_header_copy_public
 
 
 end module gadget_sphray_header_class

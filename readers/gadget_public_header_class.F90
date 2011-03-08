@@ -12,6 +12,7 @@
 module gadget_public_header_class
 use myf03_mod
 use gadget_general_class
+use gadget_sphray_header_class
 
 #ifdef useMPI
   use mpi
@@ -28,6 +29,7 @@ public :: gadget_public_header_print_lun
 public :: gadget_public_header_return_gyr
 public :: gadget_public_header_broadcast
 
+public :: gadget_sphray_header_copy_public
 
 
 !> Header type
@@ -244,7 +246,31 @@ subroutine gadget_public_header_broadcast( this )
 
 end subroutine gadget_public_header_broadcast
 
+!> copies a Public header into the sphray style header
+!--------------------------------------------------------------
+subroutine gadget_sphray_header_copy_public( this, pubhead )
+  type(gadget_sphray_header_type) :: this
+  type(gadget_public_header_type) :: pubhead
 
+  this%npar_file(0:5)   = pubhead%npar_file(0:5)   
+  this%mass(0:5)        = pubhead%mass(0:5)        
+  this%a                = pubhead%a                
+  this%z                = pubhead%z                
+  this%flag_sfr         = pubhead%flag_sfr         
+  this%flag_feedback    = pubhead%flag_feedback    
+  this%npar_all(0:5)    = pubhead%npar_all(0:5)    
+  this%flag_cooling     = pubhead%flag_cooling     
+  this%nfiles           = pubhead%nfiles           
+  this%boxlen           = pubhead%boxlen           
+  this%OmegaM           = pubhead%OmegaM           
+  this%OmegaL           = pubhead%OmegaL           
+  this%h                = pubhead%h                
+  this%flag_age         = pubhead%flag_age         
+  this%flag_metals      = pubhead%flag_metals      
+  this%npar_hw(0:5)     = pubhead%npar_hw(0:5)     
+  this%flag_entr_ics    = pubhead%flag_entr_ics    
+
+end subroutine gadget_sphray_header_copy_public
 
 
 end module gadget_public_header_class

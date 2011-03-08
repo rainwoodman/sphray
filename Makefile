@@ -7,7 +7,7 @@
 ##############################################################################
 ##############################################################################
 
-
+NULL = 
 # Runtime Macros 
 #=============================================================================
 #
@@ -95,47 +95,51 @@ APPS= screen sphray
 
 #--------------------
 
-SRC= 	myf03.o \
-	sobol.o \
-	physical_constants.o \
-	mt19937.o \
-	m_mrgrnk.o \
-	hui_gnedin_atomic_rates.o \
-	cen_atomic_rates.o \
-	hummer_atomic_rates.o  \
-	atomic_rates.o \
-	ion_table_class.o \
-        gadget_general_class.o \
-	gadget_public_header_class.o \
-        gadget_owls_header_class.o \
-	gadget_public_header_hdf5_class.o \
-        gadget_sphray_header_class.o \
-	cosmology.o \
-	particle_system.o \
-	b2cd.o \
-	spectra.o \
-	sphpar.o \
-	octtree3.o \
-	ray.o \
-	raylist.o \
-	global.o \
-	config.o \
-	source_input.o \
-	gadget_public_input.o \
-        gadget_cosmoBH_input.o \
-        gadget_owls_input.o \
-        gadget_vbromm_input.o \
-        gadget_public_input_hdf5.o \
-        update_particles.o \
-	main_input.o \
-	ionpar.o \
-	euler.o \
-	bdf.o \
-	output.o \
-	ion_temperature_update.o \
-	initialize.o \
-	mainloop.o 
+READERS =  \
+		readers/gadget_public_header_class.o \
+		readers/ion_table_class.o \
+		readers/gadget_owls_header_class.o \
+		readers/gadget_public_header_hdf5_class.o \
+		readers/gadget_public_input.o \
+		readers/gadget_cosmoBH_input.o \
+		readers/gadget_owls_input.o \
+		readers/gadget_vbromm_input.o \
+		readers/gadget_public_input_hdf5.o \
+		$(NULL)
 
+OBJS =  myf03.o \
+		mt19937.o \
+		m_mrgrnk.o \
+		hui_gnedin_atomic_rates.o \
+		cen_atomic_rates.o \
+		hummer_atomic_rates.o  \
+		atomic_rates.o \
+		physical_constants.o \
+		cosmology.o \
+		particle_system.o \
+		gadget_general_class.o \
+		gadget_sphray_header_class.o \
+		octtree3.o \
+		global.o \
+		$(READERS) \
+		sobol.o \
+		update_particles.o \
+		b2cd.o \
+		spectra.o \
+		sphpar.o \
+		ray.o \
+		raylist.o \
+		config.o \
+		source_input.o \
+		main_input.o \
+		ionpar.o \
+		euler.o \
+		bdf.o \
+		output.o \
+		ion_temperature_update.o \
+		initialize.o \
+		mainloop.o \
+		$(NULL)
 
 #=============================================================================
 # These lines should NOT be edited if you are using the HDF5 libraries.
@@ -187,21 +191,14 @@ screen: Makefile
 #
 # Main SPHRAY application
 #=============================================================================
-sphray: $(SRC) sphray.o
-	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
-
+sphray: $(OBJS) sphray.o
+	$(FC) -I readers/ $(FFLAGS) $^ $(OPT) $(FNAME) $@
 
 
 # HDF5 modules
 #=============================================================================
 gadget_input_hdf5.o: gadget_input_hdf5.F90
 	$(FC) $(FFLAGS) $(OPT) $(F2OBJ) $< $(FNAME) $@
-
-# Test density estimates (in progress) 
-#=============================================================================
-
-density_test: $(SRC) density_test.o
-	$(FC) $(FFLAGS) $(OPT) -o $@ $^ 
 
 
 # Implicit Rules
@@ -226,11 +223,10 @@ density_test: $(SRC) density_test.o
 #=============================================================================
 
 clean :
-	rm -f *.o *.mod *__genmod.f90
+	rm -f $(OBJS) *.mod */*.mod
 
 cleanall :
-	rm -f *.o *.mod *__genmod.f90 \
-	$(APPS) 
+	rm -f $(OBJS) *.mod */*.mod $(APPS) 
 
 tidy :
 	rm -f *~ 

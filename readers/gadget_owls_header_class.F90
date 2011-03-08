@@ -9,6 +9,7 @@ module gadget_owls_header_class
 use myf03_mod
 use gadget_general_class
 use gadget_public_header_class
+use gadget_sphray_header_class
 
 #ifdef useHDF5
 use hdf5_wrapper
@@ -24,6 +25,8 @@ public :: gadget_owls_header_read_file
 public :: gadget_owls_header_write_lun
 public :: gadget_owls_header_print_lun
 
+
+public :: gadget_sphray_header_copy_owls
 
 !> Header type
 !-----------------------------------------
@@ -221,6 +224,34 @@ subroutine gadget_owls_header_print_lun(this, lun)
 
 end subroutine gadget_owls_header_print_lun
 
+
+!> copies an OWLS/GIMIC header into the sphray style header
+!--------------------------------------------------------------
+subroutine gadget_sphray_header_copy_owls( this, owlshead )
+  type(gadget_sphray_header_type) :: this
+  type(gadget_owls_header_type) :: owlshead
+
+  this%npar_file(0:5)   = owlshead%npar_file(0:5)   
+  this%mass(0:5)        = owlshead%mass(0:5)        
+  this%a                = owlshead%a                
+  this%z                = owlshead%z                
+  this%flag_sfr         = owlshead%flag_sfr         
+  this%flag_feedback    = owlshead%flag_feedback    
+  this%npar_all(0:5)    = owlshead%npar_all(0:5)    
+  this%flag_cooling     = owlshead%flag_cooling     
+  this%nfiles           = owlshead%nfiles           
+  this%boxlen           = owlshead%boxlen           
+  this%OmegaM           = owlshead%OmegaM           
+  this%OmegaL           = owlshead%OmegaL           
+  this%h                = owlshead%h                
+  this%flag_age         = owlshead%flag_age         
+  this%flag_metals      = owlshead%flag_metals      
+  this%npar_hw(0:5)     = owlshead%npar_hw(0:5)     
+
+  this%OmegaB           = owlshead%OmegaB
+  this%time_gyr         = owlshead%time_gyr
+
+end subroutine gadget_sphray_header_copy_owls
 
 
 
