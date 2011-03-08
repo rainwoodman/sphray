@@ -153,66 +153,6 @@ ifeq (useHDF5,$(findstring useHDF5, $(OPT)))
 endif
 OPT += $(OPTHDF)
 
-#=============================================================================
-# These only need to be set if you are using the OpenGL visiualization tool
-# Note that I have taken code from the f03gl project and placed it in a 
-# directory called OpenGL within the SPHRAY distribution to save you the 
-# trouble of downloading it. HOWEVER the work on that project has been done
-# by 
-#
-# Anthony Stone <ajs1 at cam dot ac dot uk> and 
-# Aleksandar Donev <aleks dot donev at gmail dot com>
-#
-#
-# http://www-stone.ch.cam.ac.uk/pub/f03gl
-#
-#=============================================================================
-
-# local OpenGL directory (should not need to be changed) 
-#-----------------------------------------------------------------------------
-LCLGLDIR = OpenGL
-
-#  change this to correspond to your GLUT implementation
-#-----------------------------------------------------------------------------
-# GLUT= glut
-# GLUT= openglut
-  GLUT= freeglut
-
-GLSRC=  $(LCLGLDIR)/GLUT_fonts.o \
-	$(LCLGLDIR)/OpenGL_gl.o  \
-	$(LCLGLDIR)/OpenGL_glu.o \
-	$(LCLGLDIR)/OpenGL_${GLUT}.o 
-
-THRDSRC= $(LCLGLDIR)/fthread.o $(LCLGLDIR)/pt.o $(LCLGLDIR)/ptf77.o 
-
-VIEWSRC= $(GLSRC) $(THRDSRC)
-
-
-#  Comment out for 32-bit architecture
-#-----------------------------------------------------------------------------
-#BITS= 64
-
-#  The OpenGL / GLUT libraries 
-#-----------------------------------------------------------------------------
-DIROGL= ${ISLIB}/usr/lib${BITS} $(ISLIB)./$(LCLGLDIR) 
-LIBOGL= -lglut -lGL -lGLU
-
-#  The X11 libraries 
-#-----------------------------------------------------------------------------
-DIRX11= ${ISLIB}/usr/X11R6/lib${BITS}
-LIBX11= -lXaw -lXt -lXmu -lXi -lXext -lX11 -lm -lXxf86vm
-
-
-# multi threading and local GLUT library
-#=============================================================================
-
-
-DIRTHRD = ${ISLIB}./$(LCLGLDIR)
-LIBTHRD = -lpthread -lpt
-
-DIRSVIEW = $(DIROGL) $(DIRX11) $(DIRTHRD) 
-LIBSVIEW = ${LIBOGL} ${LIBX11} $(LIBTHRD) -ldl
-
 
 # Targets
 #=============================================================================
@@ -252,22 +192,6 @@ sphray: $(SRC) sphray.o
 
 
 
-# OpenGL Targets
-#=============================================================================
-
-
-# Create libpt library (for starting a seperate thread)
-
-$(LCLGLDIR)/libpt.a: $(THRDSRC) $(LCLGLDIR)/pt.h
-	ar crv $(LCLGLDIR)/libpt.a $(LCLGLDIR)/pt.o $(LCLGLDIR)/ptf77.o
-	ranlib $(LCLGLDIR)/libpt.a
-
-# SPHRAY with OpenGL viewer
-
-glsphray: $(SRC) $(VIEWSRC) viewer.o $(LCLGLDIR)/libpt.a glsphray.o  
-	${FC} $(FFLAGS) $(OPT) $^ $(DIRSVIEW) $(LIBSVIEW) $(FNAME) $@
-
-
 # HDF5 modules
 #=============================================================================
 gadget_input_hdf5.o: gadget_input_hdf5.F90
@@ -302,13 +226,11 @@ density_test: $(SRC) density_test.o
 #=============================================================================
 
 clean :
-	rm -f *.o *.mod *__genmod.f90 \
-	$(LCLGLDIR)/libpt.a $(LCLGLDIR)/*.o $(LCLGLDIR)/*.mod
+	rm -f *.o *.mod *__genmod.f90
 
 cleanall :
 	rm -f *.o *.mod *__genmod.f90 \
-	$(LCLGLDIR)/libpt.a $(LCLGLDIR)/*.o $(LCLGLDIR)/*.mod \
-	density_test glsphray $(APPS) 
+	$(APPS) 
 
 tidy :
 	rm -f *~ 
