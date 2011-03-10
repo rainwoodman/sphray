@@ -9,6 +9,7 @@ use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
 use atomic_rates_mod, only: atomic_rates_table_type
 use atomic_rates_mod, only: atomic_rates_type
+use ray_mod, only: src_ray_type
 implicit none
 
 
@@ -37,7 +38,7 @@ end type run_planning_type
 !=====================
 type(particle_system_type) :: psys        !< particles + sources + box
 type(oct_tree_type) :: tree               !< octree
-
+type(src_ray_type), allocatable :: active_rays(:)   !< rays currently tracing
 type(atomic_rates_table_type) :: rtable   !< rates read in from file
 type(atomic_rates_type) :: isoT_k         !< static rates for iso-temperature run
 type(atomic_rates_type) :: cmbT_k         !< static rates for cmb-temperature

@@ -23,6 +23,7 @@ module mainloop_mod
   use global_mod, only: tree
   use global_mod, only: GV
   use global_mod, only: PLAN
+  use global_mod, only: active_rays
 
 
   
@@ -64,7 +65,6 @@ contains
     ! work variables
     !-----------------
     logical :: srcray
-    type(src_ray_type), allocatable  :: ray(:)
     real(r8b) :: outmark
     
 #ifdef incHrec
@@ -114,7 +114,7 @@ contains
        
        ! begin ray tracing 
        !------------------------- 
-       allocate(ray(GV%IonFracOutRays))
+       allocate(active_rays(GV%IonFracOutRays))
        GV%rayoops = 0
        GV%totalhits = 0
 
@@ -139,7 +139,7 @@ contains
             enddo
                     
             !  create a source ray and calc the impacts
-            call src_ray_make( ray(raym), psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box )
+            call src_ray_make( active_rays(raym), psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box )
 
             ! begin stat
             if (GV%raystats) then
@@ -147,8 +147,8 @@ contains
                raystatcnt = raystatcnt + 1
              
                raystats(raystatcnt)%srcn  = srcn
-               raystats(raystatcnt)%start = ray(raym)%start  
-               raystats(raystatcnt)%ryd   = ray(raym)%freq
+               raystats(raystatcnt)%start = active_rays(raym)%start  
+               raystats(raystatcnt)%ryd   = active_rays(raym)%freq
              
                if (raystatcnt == raystatbuffsize) then
                   write(GV%raystatlun) raystats
@@ -160,20 +160,20 @@ contains
           ! done stat 
           
             GV%itime = GV%itime + 1
-            ray(raym)%itime = GV%itime
-            GV%TotalPhotonsCast = GV%TotalPhotonsCast + ray(raym)%pini
+            active_rays(raym)%itime = GV%itime
+            GV%TotalPhotonsCast = GV%TotalPhotonsCast + active_rays(raym)%pini
           ! done creation of a ray
           enddo
 
-         !$OMP PARALLEL FIRSTPRIVATE(raym, raylist,srcray, rayoops, TID) SHARED(ray)
+         !$OMP PARALLEL FIRSTPRIVATE(raym, raylist,srcray, rayoops, TID)
          TID = OMP_GET_THREAD_NUM()
          PRINT *, 'Hello from thread', TID
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do raym = 1, GV%IonFracOutRays
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylist)
-            call reset_raylist(raylist, ray(raym))
-            call trace_ray(ray(raym), raylist, psys, tree) 
+            call reset_raylist(raylist, active_rays(raym))
+            call trace_ray(active_rays(raym), raylist, psys, tree) 
             srcray = .true.
             call update_raylist(raylist,psys%par,psys%box,srcray)
             !$OMP ATOMIC
@@ -244,6 +244,7 @@ contains
           
           
        end do src_rays
+       deallocate(active_rays)
 
 
        
