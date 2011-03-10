@@ -11,6 +11,7 @@ use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: transformation_type
 use oct_tree_mod, only: oct_tree_type
+use global_mod, only: active_rays
 
 implicit none
 
@@ -50,7 +51,7 @@ implicit none
       logical :: reuseable        !< is this ray reusable?
       integer :: searchimage      !< which transformation of the particles?
       integer :: nsearchimages    !< how many images to search
-      type(src_ray_type) :: ray   !< ray 
+      integer(i4b) :: rayn         !< ray index within active_rays
       type(transformation_type) :: trafo(nimages)  !< transformations  
       type(intersection_type), allocatable :: intersection(:) !< ray/par 
       logical :: allocated        ! is the intesection array already allocated? stupid fortran can't test this!
@@ -80,11 +81,11 @@ contains
  
 !> initialize raylist variables and set search images
 !------------------------------------------------------
- subroutine prepare_raysearch(psys, raylist, ray)
+ subroutine prepare_raysearch(psys, raylist, rayn)
 
    type(particle_system_type) psys !< particle system
    type(raylist_type) raylist      !< ray list
-   type(src_ray_type) :: ray  !< the ray
+   integer(i4b) :: rayn  !< the ray index
   
    raylist%nnb            = 0
    raylist%maxnnb         = MAX_RAYLIST_LENGTH
@@ -97,7 +98,7 @@ contains
 
    allocate(raylist%intersection(raylist%maxnnb))
 
-   raylist%ray = ray
+   raylist%rayn = rayn
 
    call setsearchimages(psys,raylist)
 
@@ -146,7 +147,7 @@ contains
    si = raylist%searchimage
 
    ! curay%start = ray%start * fac + shift
-   call src_ray_transform( raylist%ray, curay, raylist%trafo(si) )
+   call src_ray_transform( active_rays(raylist%rayn), curay, raylist%trafo(si) )
    next = raylist%searchcell
 
    do while (next /= 0)

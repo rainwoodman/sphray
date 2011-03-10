@@ -55,7 +55,7 @@ contains
     
     integer(i8b) :: snapn !< snapshot counter
     integer(i8b) :: rayn  !< ray counter
-    integer(i8b) :: raym  !< ray counter, inner loop
+    integer(i4b) :: raym  !< ray counter, inner loop
     integer(i8b) :: srcn  !< source counter
     integer(i8b) :: rayoops !< count of lasthit > ray%itime
     
@@ -168,7 +168,7 @@ contains
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do raym = 1, GV%IonFracOutRays
             ! begin ray tracing and updating 
-            call prepare_raysearch(psys, raylist, active_rays(raym))
+            call prepare_raysearch(psys, raylist, rayn=raym)
             call trace_ray(raylist, psys, tree) 
             call update_raylist(raylist,psys%par,psys%box)
             !$OMP ATOMIC

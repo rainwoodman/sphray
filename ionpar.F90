@@ -18,6 +18,7 @@ use cen_atomic_rates_mod, only: Osterbrok_HeII_photo_cs
 use cen_atomic_rates_mod, only: Haiman_Bremss_cool
 use cen_atomic_rates_mod, only: Haiman_Comp_Heol
 use global_mod, only: GV
+use global_mod, only: active_rays
 use hui_gnedin_atomic_rates_mod
 implicit none
 
@@ -487,7 +488,7 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
   ! set values that are static during the update
   !-----------------------------------------------
-  ipar%rayn     = raylist%ray%emit_time
+  ipar%rayn     = raylist%rayn
 
   ipar%NeBckgnd = GV%NeBackground
   ipar%Tcmb     = GV%Tcmb_cur
@@ -555,27 +556,27 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
      ipar%bnorm = ipar%b / ipar%hsml
      ipar%cdfac = b2cdfac(ipar%bnorm,ipar%hsml,GV%cgs_len)
 
-     ipar%dt_code = (raylist%ray%emit_time - ipar%lasthit) * GV%dt_code
-     ipar%dt_s    = (raylist%ray%emit_time - ipar%lasthit) * GV%dt_s
+     ipar%dt_code = (active_rays(ipar%rayn)%emit_time - ipar%lasthit) * GV%dt_code
+     ipar%dt_s    = (active_rays(ipar%rayn)%emit_time - ipar%lasthit) * GV%dt_s
      
      ipar%pdeps    = 0.0d0
      ipar%pdeps_eq = 0.0d0
 
-     ipar%penrg = raylist%ray%enrg
+     ipar%penrg = active_rays(ipar%rayn)%enrg
 
-     ipar%sigmaHI = Verner_HI_photo_cs(raylist%ray%freq)    
+     ipar%sigmaHI = Verner_HI_photo_cs(active_rays(ipar%rayn)%freq)    
      if (He) then
-        ipar%sigmaHeI = Osterbrok_HeI_photo_cs(raylist%ray%freq * HI_th_Hz)    
-        ipar%sigmaHeII = Osterbrok_HeII_photo_cs(raylist%ray%freq * HI_th_Hz)
+        ipar%sigmaHeI = Osterbrok_HeI_photo_cs(active_rays(ipar%rayn)%freq * HI_th_Hz)    
+        ipar%sigmaHeII = Osterbrok_HeII_photo_cs(active_rays(ipar%rayn)%freq * HI_th_Hz)
      else
         ipar%sigmaHeI = 0.0d0
         ipar%sigmaHeII = 0.0d0
      end if
      
      if (srcray) then        
-        ipar%pflux = raylist%ray%pcnt / ipar%dt_s 
+        ipar%pflux = active_rays(ipar%rayn)%pcnt / ipar%dt_s 
      else
-        ipar%pflux = raylist%ray%pcnt 
+        ipar%pflux = active_rays(ipar%rayn)%pcnt 
      end if
 
   end if

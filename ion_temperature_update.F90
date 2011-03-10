@@ -20,6 +20,8 @@ use euler_mod, only: eulerint, recombeulerint
 use bdf_mod, only: bdfint
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: GV, saved_gheads, rtable
+use global_mod, only: active_rays
+
 implicit none
 
 private
@@ -73,6 +75,7 @@ subroutine update_raylist(raylist, pars, box)
 
   type(particle_type) :: par
   type(ionpart_type) :: ipar
+  type(src_ray_type) :: ray
   integer(i8b) :: impact  
   integer(i8b) :: scalls  ! number of calls to solver
   logical :: photo
@@ -92,6 +95,7 @@ subroutine update_raylist(raylist, pars, box)
   ! loop through the ray particle intersections
   !-------------------------------------------------------
   raylist%rayoops = 0
+  ray = active_rays(raylist%rayn)
   impact_loop: do impact = 1,raylist%nnb
 
      GV%ParticleCrossings = GV%ParticleCrossings + 1     
@@ -103,14 +107,14 @@ subroutine update_raylist(raylist, pars, box)
 
      ! check we dont have double intersections when we shouldn't
      !-------------------------------------------------------------
-     if (raylist%ray%srcray) then
-        if (box%tbound(1)==1 .and. raylist%ray%emit_time == par%lasthit) then
+     if (ray%srcray) then
+        if (box%tbound(1)==1 .and. ray%emit_time == par%lasthit) then
            ! here we have periodic BCs and a particle has been hit
            ! twice by the same ray so we stop tracing 
-           GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + raylist%ray%pcnt
+           GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + ray%pcnt
            raylist%lastnnb = impact-1
            exit
-        else if (box%tbound(1)==0 .and. raylist%ray%emit_time == par%lasthit) then
+        else if (box%tbound(1)==0 .and. ray%emit_time == par%lasthit) then
            ! here we have transmissive BCs and a particle has been hit
            ! twice by the same ray so something is wrong
            write(*,*) "transmissive BCs and particle hit twice in one ray!"
@@ -120,11 +124,11 @@ subroutine update_raylist(raylist, pars, box)
            stop
         end if
      end if
-     if (raylist%ray%emit_time < par%lasthit) then
+     if (ray%emit_time < par%lasthit) then
          raylist%rayoops = raylist%rayoops + 1
          cycle
      endif
-     call initialize_ionpar(ipar,par,index,raylist%ray%srcray,He,raylist,impact)
+     call initialize_ionpar(ipar,par,index,ray%srcray,He,raylist,impact)
 
 
 !     write(*,*) "d,dl:", raylist%intersection(impact)%d, ipar%dl
@@ -132,7 +136,7 @@ subroutine update_raylist(raylist, pars, box)
 !     write(*,*) "inside: ", ipar%inside
 !     write(*,*) 
 
-     if (raylist%ray%srcray) then
+     if (ray%srcray) then
         if (GV%IonTempSolver==1) then
            call eulerint(ipar,scalls,photo,caseA,He,isoT,fixT)
            ipar%strtag = "on_eulerint_output"
@@ -164,8 +168,8 @@ subroutine update_raylist(raylist, pars, box)
 
      pars(ipar%index) = par
 
-     if (raylist%ray%srcray) then
-        pars(ipar%index)%lasthit = raylist%ray%emit_time 
+     if (ray%srcray) then
+        pars(ipar%index)%lasthit = ray%emit_time 
      end if
 
 
@@ -185,7 +189,7 @@ subroutine update_raylist(raylist, pars, box)
      ! if the particle satisfies the rec ray tol put it on the recomb list
      !=====================================================================
 #ifdef incHrec
-     if (raylist%ray%srcray) then
+     if (ray%srcray) then
         if (.not. pars(ipar%indx)%OnRecList) then
            if (pars(ipar%indx)%xHIIrc > GV%RecRayTol) then
               pars(ipar%indx)%OnRecList = .true.
@@ -202,14 +206,14 @@ subroutine update_raylist(raylist, pars, box)
      !=====================================================================
 
      if (GV%RayDepletion) then
-        raylist%ray%pcnt = raylist%ray%pcnt - ipar%pdeps
+        ray%pcnt = ray%pcnt - ipar%pdeps
      endif
      
      
      ! if photons are exhausted
      !-------------------------------
-     if (raylist%ray%pini > 0.0) then
-        if (raylist%ray%pcnt / raylist%ray%pini < GV%RayPhotonTol) then
+     if (ray%pini > 0.0) then
+        if (ray%pcnt / ray%pini < GV%RayPhotonTol) then
            exit
         end if
      end if
@@ -218,7 +222,7 @@ subroutine update_raylist(raylist, pars, box)
      !-------------------------------
      if(box%tbound(1)==0) then
         if(impact==raylist%nnb) then
-           GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + raylist%ray%pcnt
+           GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + ray%pcnt
         end if
      end if
 
