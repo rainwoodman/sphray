@@ -172,7 +172,7 @@ contains
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylist, active_rays(raym))
             call trace_ray(raylist, psys, tree) 
-            call update_raylist(raylist,psys%par,psys%box,srcray = .true.)
+            call update_raylist(raylist,psys%par,psys%box)
             !$OMP ATOMIC
             GV%rayoops = GV%rayoops + raylist%rayoops
             !$OMP ATOMIC

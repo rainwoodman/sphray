@@ -65,12 +65,11 @@ end subroutine set_bools
 
 !> updates the particles intersected by a ray 
 !!-----------------------------------------------------------------
-subroutine update_raylist(raylist, pars, box, srcray)
+subroutine update_raylist(raylist, pars, box)
 
   type(raylist_type), intent(inout) :: raylist !< ray/particle intersections
   type(particle_type), intent(inout) :: pars(:)  !< particle system
   type(box_type), intent(in) :: box  !< particle system
-  logical, intent(in) :: srcray !< is this update for a source ray?
 
   type(particle_type) :: par
   type(ionpart_type) :: ipar
@@ -104,7 +103,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
 
      ! check we dont have double intersections when we shouldn't
      !-------------------------------------------------------------
-     if (srcray) then
+     if (raylist%ray%srcray) then
         if (box%tbound(1)==1 .and. raylist%ray%itime == par%lasthit) then
            ! here we have periodic BCs and a particle has been hit
            ! twice by the same ray so we stop tracing 
@@ -125,7 +124,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
          raylist%rayoops = raylist%rayoops + 1
          cycle
      endif
-     call initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
+     call initialize_ionpar(ipar,par,index,raylist%ray%srcray,He,raylist,impact)
 
 
 !     write(*,*) "d,dl:", raylist%intersection(impact)%d, ipar%dl
@@ -133,7 +132,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
 !     write(*,*) "inside: ", ipar%inside
 !     write(*,*) 
 
-     if (srcray) then
+     if (raylist%ray%srcray) then
         if (GV%IonTempSolver==1) then
            call eulerint(ipar,scalls,photo,caseA,He,isoT,fixT)
            ipar%strtag = "on_eulerint_output"
@@ -165,7 +164,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
 
      pars(ipar%index) = par
 
-     if (srcray) then
+     if (raylist%ray%srcray) then
         pars(ipar%index)%lasthit = raylist%ray%itime 
      end if
 
@@ -186,7 +185,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
      ! if the particle satisfies the rec ray tol put it on the recomb list
      !=====================================================================
 #ifdef incHrec
-     if (srcray) then
+     if (raylist%ray%srcray) then
         if (.not. pars(ipar%indx)%OnRecList) then
            if (pars(ipar%indx)%xHIIrc > GV%RecRayTol) then
               pars(ipar%indx)%OnRecList = .true.
