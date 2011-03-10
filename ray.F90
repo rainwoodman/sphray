@@ -51,8 +51,7 @@ type src_ray_type
    real(r8b) :: pcnt      !< photon count (changes as the ray is depleted)
    real(r8b) :: pini      !< initial photons
    real(r8b) :: dt_s      !< time step associated with ray [s]
-   integer(i8b) :: itime  !< integer time the ray is created
-   integer(i8b) :: rayn   !< integer id of the ray, not sure if useful at all, replacing GV%rayn
+   integer(i8b) :: emit_time   !< integer id of the ray, not sure if useful at all, replacing GV%emit_time
    logical(i4b) :: srcray !< is the ray from the source or a recombination ray?
 end type src_ray_type
 
@@ -75,11 +74,11 @@ contains
 
 !> creates a source ray 
 !-----------------------------------------------------------------------  
-  subroutine src_ray_make(ray, src, rayn, dtray_s, Lunit, box, length)
+  subroutine src_ray_make(ray, src, emit_time, dtray_s, Lunit, box, length)
 
     type(src_ray_type), intent(out) :: ray    !< ray to make
     type(source_type), intent(inout) :: src   !< source
-    integer(i8b), intent(in) :: rayn          !< ray indx
+    integer(i8b), intent(in) :: emit_time          !< when is the ray emitted
     real(r8b), intent(in) :: dtray_s          !< time between rays [s]   
     real(r8b), intent(in) :: Lunit            !< converts src%lum -> photons/s
     type(box_type), intent(in) :: box         !< simulation box
@@ -101,7 +100,7 @@ contains
 !  [photons/s].  
 
     ray%srcray = .True.
-    ray%rayn = rayn
+    ray%emit_time = emit_time
     select case (src%EmisPrf)
        
     ! this makes rays go in -z direction  
@@ -169,15 +168,15 @@ contains
     else 
        prate = 0.
     end if
-    if (rayn > src%lastemit) then
-       ray%dt_s = dtray_s * (rayn - src%lastemit) 
+    if (emit_time > src%lastemit) then
+       ray%dt_s = dtray_s * (emit_time - src%lastemit) 
        ray%pini = prate * ray%dt_s
     else
-       write(*,*) "make_source_ray> rayn .LT. src%lastemit in ray.f90"
+       write(*,*) "make_source_ray> emit_time .LT. src%lastemit in ray.f90"
        stop
     end if
     ray%pcnt = ray%pini
-    src%lastemit = rayn
+    src%lastemit = emit_time
 
   end subroutine src_ray_make
 

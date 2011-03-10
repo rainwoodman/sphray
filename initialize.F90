@@ -396,8 +396,6 @@ subroutine initialize_global_variables()
   ! initialize counters and timers
   !---------------------------------
   GV%CurSnapNum = GV%StartSnapNum
-  GV%rayn = 0
-  GV%src_rayn = 0
   GV%MB = zero
  
   GV%itime = 0_i8b

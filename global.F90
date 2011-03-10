@@ -231,8 +231,6 @@ type global_variables_type
    integer(i4b) :: outplanlun      !< lun for out planning file
 
    integer(i4b) :: CurSnapNum      !< current snapshot number
-   integer(i8b) :: rayn            !< current ray number (src + recomb)
-   integer(i8b) :: src_rayn        !< current source ray number
 
    real(r8b) :: nwionfrac          !< number weighted ionization fraction
    real(r8b) :: mwionfrac          !< mass weighted ionization fraction

@@ -82,6 +82,7 @@ contains
        !  read in particle and source snapshot
        !----------------------------------------------------------------      
        call readin_snapshot()
+       psys%src%lastemit = GV%itime
               
        !  build oct tree.  only need to do this once per snap (for now)
        !----------------------------------------------------------------
@@ -122,9 +123,8 @@ contains
           
           do raym = 1, GV%IonFracOutRays
             ! begin creation of a ray
-            GV%rayn                = GV%rayn + 1
-            GV%src_rayn            = GV%src_rayn + 1
             GV%TotalSourceRaysCast = GV%TotalSourceRaysCast + 1                
+            GV%itime = GV%itime + 1
           
             !  select a source randomly (weighted by their luminosity)
             rn = genrand_real1() * psys%src(size(psys%src))%Lcdf
@@ -138,7 +138,7 @@ contains
             enddo
                     
             !  create a source ray and calc the impacts
-            call src_ray_make( active_rays(raym), psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box )
+            call src_ray_make( active_rays(raym), psys%src(srcn), GV%itime, GV%dt_s, GV%Lunit, psys%box )
 
             ! begin stat
             if (GV%raystats) then
@@ -158,8 +158,6 @@ contains
             end if
           ! done stat 
           
-            GV%itime = GV%itime + 1
-            active_rays(raym)%itime = GV%itime
             GV%TotalPhotonsCast = GV%TotalPhotonsCast + active_rays(raym)%pini
           ! done creation of a ray
           enddo
@@ -230,7 +228,7 @@ contains
           ! output, do a full output.
           if ( snapn == GV%EndSnapNum ) then
              if ( GV%OutputIndx <= GV%NumTotOuts ) then
-                if ( GV%src_rayn==PLAN%snap(snapn)%SrcRays ) then
+                if ( GV%TotalSourceRaysCast==PLAN%snap(snapn)%SrcRays ) then
                    write(*,*) "doing an output on the last ray"
                    call output_total_snap(psys)
                 end if

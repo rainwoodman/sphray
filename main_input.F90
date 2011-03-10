@@ -192,7 +192,6 @@ subroutine readin_snapshot()
   !============================================
   call read_src_snapshot()
   call order_sources_lum(psys%src)
-  psys%src%lastemit = GV%rayn
 
   
   ! these quantities track the photoionization rate.  they are 

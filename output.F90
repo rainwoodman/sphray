@@ -73,7 +73,7 @@ contains
     ghead%flag_metals   = saved_gheads(GV%CurSnapNum,fnum)%flag_metals
     ghead%flag_entr_ics = saved_gheads(GV%CurSnapNum,fnum)%flag_entr_ics
     
-    ghead%rays_traced = GV%src_rayn
+    ghead%rays_traced = GV%TotalSourceRaysCast
 
 #ifdef incHmf
     ghead%flag_Hmf = 1
