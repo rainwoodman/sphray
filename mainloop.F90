@@ -64,7 +64,6 @@ contains
     
     ! work variables
     !-----------------
-    logical :: srcray
     real(r8b) :: outmark
     
 #ifdef incHrec
@@ -165,17 +164,15 @@ contains
           ! done creation of a ray
           enddo
 
-         !$OMP PARALLEL FIRSTPRIVATE(raym, raylist,srcray, rayoops, TID)
+         !$OMP PARALLEL FIRSTPRIVATE(raym, raylist, rayoops, TID)
          TID = OMP_GET_THREAD_NUM()
          PRINT *, 'Hello from thread', TID
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do raym = 1, GV%IonFracOutRays
             ! begin ray tracing and updating 
-            call prepare_raysearch(psys, raylist)
-            call reset_raylist(raylist, active_rays(raym))
-            call trace_ray(active_rays(raym), raylist, psys, tree) 
-            srcray = .true.
-            call update_raylist(raylist,psys%par,psys%box,srcray)
+            call prepare_raysearch(psys, raylist, active_rays(raym))
+            call trace_ray(raylist, psys, tree) 
+            call update_raylist(raylist,psys%par,psys%box,srcray = .true.)
             !$OMP ATOMIC
             GV%rayoops = GV%rayoops + raylist%rayoops
             !$OMP ATOMIC

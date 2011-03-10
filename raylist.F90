@@ -20,7 +20,6 @@ implicit none
  public :: raylist_type
  public :: prepare_raysearch
  public :: kill_raylist
- public :: reset_raylist
 
  real, parameter :: zero = 0.0d0
  real, parameter :: half = 0.5d0
@@ -81,12 +80,25 @@ contains
  
 !> initialize raylist variables and set search images
 !------------------------------------------------------
- subroutine prepare_raysearch(psys, raylist)
+ subroutine prepare_raysearch(psys, raylist, ray)
 
    type(particle_system_type) psys !< particle system
    type(raylist_type) raylist      !< ray list
+   type(src_ray_type) :: ray  !< the ray
   
-   call make_raylist(MAX_RAYLIST_LENGTH, raylist)
+   raylist%nnb            = 0
+   raylist%maxnnb         = MAX_RAYLIST_LENGTH
+   raylist%searchcell     = 1
+   raylist%reuseable      = .false.
+   raylist%searchimage    = 1
+   raylist%nsearchimages  = 1
+   raylist%trafo(1)%fac   = 1
+   raylist%trafo(1)%shift = zero 
+
+   allocate(raylist%intersection(raylist%maxnnb))
+
+   raylist%ray = ray
+
    call setsearchimages(psys,raylist)
 
  end subroutine prepare_raysearch
@@ -185,50 +197,6 @@ contains
    
  end subroutine raysearch
 
-
-!> initializes values in the raylist
-!-------------------------------------------
- subroutine make_raylist(maxnnb, raylist, ray)
-
-   integer, intent(in) :: maxnnb       !< maximum number of intersections
-   type(raylist_type)      :: raylist  !< the raylist
-   type(src_ray_type),optional :: ray  !< the ray
-   real(r8b) :: start(ndim)
-   real(r8b) :: dir(ndim)
-
-     raylist%nnb            = 0
-     raylist%maxnnb         = maxnnb
-     raylist%searchcell     = 1
-     raylist%reuseable      = .false.
-     raylist%searchimage    = 1
-     raylist%nsearchimages  = 1
-     raylist%trafo(1)%fac   = 1
-     raylist%trafo(1)%shift = zero 
-
-     allocate(raylist%intersection(maxnnb))
-
-     if (present(ray)) then
-        raylist%ray = ray
-     endif
-
- end subroutine make_raylist
-
-!> reset an already initialized raylist
-!---------------------------------------
- subroutine reset_raylist(raylist,ray)
-
-   type(raylist_type) :: raylist       !< the raylist
-   type(src_ray_type), optional :: ray !< the ray
-  
-     raylist%nnb         = 0
-     raylist%searchcell  = 1
-     raylist%searchimage = 1
-     raylist%reuseable   = .false.
-     if (present(ray)) then
-        raylist%ray = ray
-     endif
-
- end subroutine reset_raylist
 
 !> kill a raylist
 !---------------------------------
@@ -378,23 +346,16 @@ contains
 
 !> given a ray creates a raylist with intersections
 !------------------------------------------------------
- subroutine trace_ray(ray, raylist, psys, searchtree, dosort) 
-   type(src_ray_type), intent(in) :: ray           !< the ray to trace
+ subroutine trace_ray(raylist, psys, searchtree) 
    type(raylist_type), intent(inout) :: raylist    !< the returned raylist
    type(particle_system_type), intent(in) :: psys  !< the particle system
    type(oct_tree_type), intent(in) :: searchtree   !< the oct-tree to search
-   logical, intent(in), optional :: dosort         !< default is true
 
    logical :: wantsort
 
-   wantsort = .true.
-   if (present(dosort)) then
-      if (.not. dosort) wantsort = .false.
-   endif
-
    call fullsearch(psys, searchtree, raylist)
 
-   if (wantsort) call sort3_raylist(raylist)
+   call sort3_raylist(raylist)
 
  end subroutine trace_ray
 
