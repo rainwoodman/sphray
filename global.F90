@@ -4,7 +4,6 @@
 !<
 module global_mod
 use myf03_mod 
-use gadget_general_class
 use gadget_sphray_header_class
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
@@ -258,30 +257,6 @@ end type global_variables_type
 
 type(global_variables_type) :: GV           !< global variables          
 
-
-
-contains
-
-
-subroutine set_dt_from_dtcode( GV )
-  type(global_variables_type), intent(inout) :: GV
-  type(gadget_constants_type) :: gconst
-
-  GV%dt_s    = GV%dt_code * GV%cgs_time / GV%LittleH 
-  GV%dt_myr  = GV%dt_s / gconst%sec_per_megayear
-
-end subroutine set_dt_from_dtcode
-
-
-
-!subroutine set_time_elapsed_from_itime( GV )
-!  type(global_variables_type), intent(inout) :: GV
-!
-!  GV%time_elapsed_code = GV%itime * GV%dt_code
-!  GV%time_elapsed_s    = GV%itime * GV%dt_s
-!  GV%time_elapsed_myr  = GV%itime * GV%dt_myr
-!
-!end subroutine set_time_elapsed_from_itime
 
 
 

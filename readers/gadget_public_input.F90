@@ -19,7 +19,7 @@ public :: get_planning_data_gadget_public
 public :: read_Gpublic_particles
 public :: set_temp_from_u
 public :: set_u_from_temp
-
+public :: form_gadget_snapshot_file_name
 
 contains
 
@@ -436,6 +436,52 @@ subroutine set_u_from_temp(psys, dfltH_mf, cgs_enrg, cgs_mass)
 
 
 end subroutine set_u_from_temp
+
+!> forms a snapshot file name from, path, base, SnapNum, and FileNum.
+!! For example, path = "/home/galtay/data/snapshots", base = "snap",
+!! SnapNum = 2 and FileNum = 15 would return in SnapFile, 
+!! "/home/galtay/data/snapshots/snap_002.15".  Setting the hdf5bool to 
+!! true appends ".hdf5" to the file. 
+!------------------------------------------------------------------------
+subroutine form_gadget_snapshot_file_name(path, base, SnapNum, FileNum, &
+     SnapFile, hdf5bool)
+
+  character(*), intent(in)     :: path        !< path to snapshot dir
+  character(*), intent(in)     :: base        !< base snapshot name
+  integer(i4b), intent(in)     :: SnapNum     !< snapshot number
+  integer(i4b), intent(in)     :: FileNum     !< file number of snapshot
+  character(clen), intent(out) :: SnapFile    !< snapshot filename
+  logical, intent(in)          :: hdf5bool    !< hdf5 file? 
+
+  character(clen) :: SnapFileTmp
+  character(10) :: FileNumChar
+  character(clen) :: fmt
+  logical :: Fthere
+
+  write(FileNumChar,"(I6)") FileNum
+  fmt = "(A,'/',A,'_',I3.3)"
+
+  ! first write a file with no extension
+  !--------------------------------------
+  write(SnapFileTmp,fmt) trim(path), trim(base), SnapNum
+  SnapFile = trim(SnapFileTmp)
+  if (hdf5bool) SnapFile = trim(SnapFile) // ".hdf5"
+  inquire( file=SnapFile, exist=Fthere )
+
+
+  ! if the file number is 0 and a file with no extension exists then return
+  ! otherwise append the FileNum to the file name
+  !-------------------------------------------------------------------------
+  if (FileNum == 0 .and. Fthere) then
+     return
+  else
+     SnapFile = trim(SnapFileTmp) // "." // trim(adjustl(FileNumChar))
+     if (hdf5bool) SnapFile = trim(SnapFile) // ".hdf5"
+  end if
+
+
+end subroutine form_gadget_snapshot_file_name
+
 
 
 

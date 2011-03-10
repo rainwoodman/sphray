@@ -19,7 +19,6 @@ use particle_system_mod
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: PLAN, GV, rtable, cmbT_k
 use global_mod, only: psys, saved_gheads
-use global_mod, only: set_dt_from_dtcode
 implicit none
 
 contains
@@ -451,6 +450,16 @@ endif
  
 
 end subroutine readin_snapshot
+
+
+subroutine set_dt_from_dtcode( GV )
+  type(global_variables_type), intent(inout) :: GV
+  type(gadget_constants_type) :: gconst
+
+  GV%dt_s    = GV%dt_code * GV%cgs_time / GV%LittleH 
+  GV%dt_myr  = GV%dt_s / gconst%sec_per_megayear
+
+end subroutine set_dt_from_dtcode
 
 
 

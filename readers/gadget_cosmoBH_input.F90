@@ -8,7 +8,7 @@ use myf03_mod
 use gadget_general_class
 use gadget_public_header_class
 use gadget_sphray_header_class
-use gadget_public_input_mod, only: set_temp_from_u
+use gadget_public_input_mod, only: set_temp_from_u, form_gadget_snapshot_file_name
 use particle_system_mod, only: particle_system_type
 
 use global_mod, only: psys, PLAN, GV

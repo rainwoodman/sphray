@@ -55,10 +55,10 @@ RATES = \
 
 OBJS =  myf03.o mt19937.o m_mrgrnk.o \
 		$(RATES) \
-		physical_constants.o cosmology.o \
+		gadget_constants.o physical_constants.o cosmology.o \
 		b2cd.o spectra.o \
 		particle_system.o octtree3.o \
-		gadget_general_class.o gadget_sphray_header_class.o \
+		gadget_sphray_header_class.o \
 		global.o config.o \
 		ray.o raylist.o \
 		ionpar.o euler.o bdf.o ion_temperature_update.o \

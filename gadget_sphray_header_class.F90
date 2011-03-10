@@ -7,7 +7,6 @@
 
 module gadget_sphray_header_class
 use myf03_mod
-use gadget_general_class
 
 #ifdef useHDF5
 use hdf5_wrapper
