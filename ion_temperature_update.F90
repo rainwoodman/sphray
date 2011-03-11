@@ -217,6 +217,8 @@ subroutine update_raylist(raylist, pars, box)
            exit
         end if
      end if
+
+     active_rays(raylist%rayn) = ray
      
      ! if vacuum BCs and exiting box
      !-------------------------------
