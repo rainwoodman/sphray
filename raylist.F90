@@ -11,7 +11,7 @@ use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: transformation_type
 use oct_tree_mod, only: oct_tree_type
-use global_mod, only: active_rays
+use global_mod, only: active_rays, psys
 
 implicit none
 
@@ -35,6 +35,7 @@ implicit none
 ! -----------------------------------------------------------------------
    type intersection_type
       integer(i8b) :: pindx   !< particle index
+      integer(i4b) :: rayn    !< ray index within activa_rays
       real :: b          !< impact parameter
       real :: d          !< distance along ray
       real :: dl         !< path length
@@ -53,7 +54,7 @@ implicit none
       integer :: nsearchimages    !< how many images to search
       integer(i4b) :: rayn         !< ray index within active_rays
       type(transformation_type) :: trafo(nimages)  !< transformations  
-      type(intersection_type), allocatable :: intersection(:) !< ray/par 
+      type(intersection_type), allocatable :: intersections(:) !< ray/par 
       logical :: allocated        ! is the intesection array already allocated? stupid fortran can't test this!
    end type raylist_type
 
@@ -65,18 +66,18 @@ contains
  
 !> set intersection values
 !-----------------------------------------
- function set_intersection(ray, part, i) result(t)
-   type(intersection_type) :: t  !< the intersection
-   type(src_ray_type) :: ray         !< the ray
-   type(particle_type) :: part   !< the particle
-   integer(i8b)  :: i            !< the particle index
+subroutine set_intersection(intersection, curay, rayn, pindx)
+   type(intersection_type), intent(out) :: intersection !< the intersection
+   type(src_ray_type) :: curay !< the ray
+   integer(i4b) :: rayn         !< the ray
+   integer(i8b)  :: pindx            !< the particle index
    real(r8b) :: d
    
-     t%pindx = i
-     t%b = src_ray_dist2pt(ray, part%pos, d)
-     t%d = d
-
- end function set_intersection
+     intersection%pindx = pindx
+     intersection%b = src_ray_dist2pt(curay, psys%par(pindx)%pos, d)
+     intersection%d = d
+     intersection%rayn = rayn
+ end subroutine set_intersection
 
  
 !> initialize raylist variables and set search images
@@ -96,7 +97,7 @@ contains
    raylist%trafo(1)%fac   = 1
    raylist%trafo(1)%shift = zero 
 
-   allocate(raylist%intersection(raylist%maxnnb))
+   allocate(raylist%intersections(raylist%maxnnb))
 
    raylist%rayn = rayn
 
@@ -177,8 +178,7 @@ contains
             par_hit = src_ray_part_intersection( curay, psys%par(orderindx) ) 
             if (par_hit) then
                raylist%nnb = raylist%nnb + 1
-               raylist%intersection(raylist%nnb) = &
-                    set_intersection(curay, psys%par(orderindx), orderindx)
+               call set_intersection(raylist%intersections(raylist%nnb), curay, raylist%rayn, orderindx)
             endif
          enddo
 
@@ -210,7 +210,7 @@ contains
      raylist%nnb=0
      raylist%maxnnb=MAX_RAYLIST_LENGTH
      raylist%searchcell=0
-     deallocate(raylist%intersection)
+     deallocate(raylist%intersections)
 
  end subroutine kill_raylist
 
@@ -332,12 +332,13 @@ contains
    real(r8b) :: darr(raylist%nnb)
 
    N = raylist%nnb
-   darr(1:N)=raylist%intersection(1:N)%d
+   darr(1:N)=raylist%intersections(1:N)%d
    call mrgrnk(darr,indexx)
 
-   raylist%intersection(1:N)%d=raylist%intersection(indexx(1:N))%d  
-   raylist%intersection(1:N)%b=raylist%intersection(indexx(1:N))%b 
-   raylist%intersection(1:N)%pindx=raylist%intersection(indexx(1:N))%pindx  
+   raylist%intersections(1:N)%d=raylist%intersections(indexx(1:N))%d  
+   raylist%intersections(1:N)%b=raylist%intersections(indexx(1:N))%b 
+   raylist%intersections(1:N)%pindx=raylist%intersections(indexx(1:N))%pindx  
+   raylist%intersections(1:N)%rayn=raylist%intersections(indexx(1:N))%rayn
 
  end subroutine sort3_raylist
 

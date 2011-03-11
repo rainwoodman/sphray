@@ -75,6 +75,7 @@ subroutine update_raylist(raylist, pars, box)
 
   type(particle_type) :: par
   type(ionpart_type) :: ipar
+  type(intersection_type) :: intersection
   type(src_ray_type) :: ray
   integer(i8b) :: impact  
   integer(i8b) :: scalls  ! number of calls to solver
@@ -83,7 +84,6 @@ subroutine update_raylist(raylist, pars, box)
   logical :: caseA(2)
   logical :: isoT
   logical :: fixT
-  integer(i8b) :: index
 
 
   ! set booleans
@@ -99,9 +99,8 @@ subroutine update_raylist(raylist, pars, box)
   impact_loop: do impact = 1,raylist%nnb
 
      GV%ParticleCrossings = GV%ParticleCrossings + 1     
-     index = raylist%intersection(impact)%pindx
-     par = pars(index)
-
+     intersection = raylist%intersections(impact)
+     par = pars(intersection%pindx)
 
      
 
@@ -128,7 +127,7 @@ subroutine update_raylist(raylist, pars, box)
          raylist%rayoops = raylist%rayoops + 1
          cycle
      endif
-     call initialize_ionpar(ipar,par,index,ray%srcray,He,raylist,impact)
+     call initialize_ionpar(ipar, intersection, He)
 
 
 !     write(*,*) "d,dl:", raylist%intersection(impact)%d, ipar%dl
@@ -166,11 +165,11 @@ subroutine update_raylist(raylist, pars, box)
      par%time    = pars(ipar%index)%time + ipar%dt_s
 #endif
 
-     pars(ipar%index) = par
-
      if (ray%srcray) then
-        pars(ipar%index)%lasthit = ray%emit_time 
+        par%lasthit = ray%emit_time 
      end if
+
+     pars(intersection%pindx) = par
 
 
      !  use the solution to set some global variables
@@ -189,12 +188,15 @@ subroutine update_raylist(raylist, pars, box)
      ! if the particle satisfies the rec ray tol put it on the recomb list
      !=====================================================================
 #ifdef incHrec
+     ! this code is never going to work as pars(interseection%pindx) has already
+     ! been tainted by par, several lines above!
+     stop 'read the code here'
      if (ray%srcray) then
-        if (.not. pars(ipar%indx)%OnRecList) then
-           if (pars(ipar%indx)%xHIIrc > GV%RecRayTol) then
-              pars(ipar%indx)%OnRecList = .true.
+        if (.not. pars(intersection%pindx)%OnRecList) then
+           if (pars(intersection%pindx)%xHIIrc > GV%RecRayTol) then
+              pars(intersection%pindx)%OnRecList = .true.
               GV%recpt = GV%recpt + 1
-              reclist(GV%recpt) = ipar%indx
+              reclist(GV%recpt) = intersection%pindx
            end if
         end if
      end if

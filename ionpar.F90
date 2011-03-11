@@ -18,7 +18,7 @@ use cen_atomic_rates_mod, only: Osterbrok_HeII_photo_cs
 use cen_atomic_rates_mod, only: Haiman_Bremss_cool
 use cen_atomic_rates_mod, only: Haiman_Comp_Heol
 use global_mod, only: GV
-use global_mod, only: active_rays
+use global_mod, only: active_rays, psys
 use hui_gnedin_atomic_rates_mod
 implicit none
 
@@ -47,7 +47,6 @@ type ionpart_type
    real(r8b) :: xHeIII       !< nHeIII / nHe
 
    integer(i8b) :: lasthit   !< last ray to cross this particle
-   integer(i8b) :: index     !< index of the particle in the psys
 
 
    ! quantities initialized before solver is called 
@@ -378,11 +377,12 @@ end subroutine set_ionpar_xH_eq
 
 !> copies the basic particle data into an ionization particle
 !-----------------------------------------------------------------------
-subroutine par2ionpar(par,ipar,index)
- type(particle_type), intent(in) :: par     !< input particle
+subroutine par2ionpar(ipar,pindx)
  type(ionpart_type), intent(inout) :: ipar  !< output ionization particle
- integer(i8b) :: index                      !< par = psys%par(index)
+ type(particle_type) :: par
+ integer(i8b) :: pindx                      !< par = psys%par(index)
 
+ par = psys%par(pindx)
  ipar%pos     = par%pos
 
 #ifdef incVel
@@ -425,7 +425,6 @@ subroutine par2ionpar(par,ipar,index)
 #endif
 
  ipar%lasthit = par%lasthit
- ipar%index   = index
 
 end subroutine par2ionpar
 
@@ -454,22 +453,18 @@ end subroutine ionpar2par
 
 !> initializes the ionization particle values
 !-----------------------------------------------------------------------
-subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
+subroutine initialize_ionpar(ipar, intersection, He)
 
   type(ionpart_type), intent(inout) :: ipar           !< ionization particle
-  type(particle_type), intent(in) :: par              !< standard particle
-  integer(i8b) :: index                               !< par = psys%par(index)
-  logical, intent(in) :: srcray                       !< source ray update ?
   logical, intent(in) :: He                           !< update Helium ?
-  type(raylist_type), intent(in), optional :: raylist !< optional raylist
-  integer(i8b), intent(in), optional :: impact        !< optional impact number
+  type(intersection_type), intent(in):: intersection !<  interesection
 
   type(gadget_constants_type) :: gconst  
   real(r8b) :: mass_cgs
   real(r8b) :: rho_cgs
 
 
-  call par2ionpar(par,ipar,index)
+  call par2ionpar(ipar,intersection%pindx)
 
   ! store initial values
   !-------------------------
@@ -488,7 +483,7 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
   ! set values that are static during the update
   !-----------------------------------------------
-  ipar%rayn     = raylist%rayn
+  ipar%rayn     = intersection%rayn
 
   ipar%NeBckgnd = GV%NeBackground
   ipar%Tcmb     = GV%Tcmb_cur
@@ -517,14 +512,8 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
   ! set ray specific quantities 
   !---------------------------------------------
-  if (present(raylist)) then
-
-     if (.not. present(impact)) stop "raylist but no impact in initialize_ionpar"
-     ipar%impact = impact  ! which impact in the raylist
-
-
-     ipar%d = raylist%intersection(impact)%d   ! distance along ray
-     ipar%b = raylist%intersection(impact)%b   ! impact parameter
+     ipar%d = intersection%d   ! distance along ray
+     ipar%b = intersection%b   ! impact parameter
  
 !!$     if ( sqrt( sum( (raylist%ray%start - ipar%pos)**2 ) ) <= ipar%hsml ) then
 !!$        ipar%inside=.true.
@@ -573,13 +562,11 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
         ipar%sigmaHeII = 0.0d0
      end if
      
-     if (srcray) then        
+     if (active_rays(ipar%rayn)%srcray) then        
         ipar%pflux = active_rays(ipar%rayn)%pcnt / ipar%dt_s 
      else
         ipar%pflux = active_rays(ipar%rayn)%pcnt 
      end if
-
-  end if
 
 
   ipar%strtag = "in initialize_ionpar"
@@ -1041,7 +1028,6 @@ subroutine ionpar2screen(ipar)
    write(*,*) "lasthit", ipar%lasthit
    write(*,*) 
    write(*,*) "ray num", ipar%rayn
-   write(*,*) "psys index", ipar%index
    write(*,*) "impact", ipar%impact
    write(*,*) "iteration", ipar%iter
    write(*,*) "raydist", ipar%d
