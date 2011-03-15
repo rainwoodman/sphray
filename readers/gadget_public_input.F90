@@ -10,6 +10,7 @@ use gadget_public_header_class
 use gadget_sphray_header_class
 use particle_system_mod
 
+use config_mod, only: CV
 use global_mod, only: psys, PLAN, GV
 use global_mod, only: saved_gheads
 implicit none
@@ -46,14 +47,14 @@ subroutine get_planning_data_gadget_public()
 
   ! open up the planning data log file
   !======================================================
-  logfile = trim(GV%OutputDir) // "/" // "particle_headers.log"
+  logfile = trim(CV%OutputDir) // "/" // "particle_headers.log"
   call open_formatted_file_w(logfile,loglun)
 
   ! these global variables are read from the config file
   !======================================================
-  iSnap  = GV%StartSnapNum
-  fSnap  = GV%EndSnapNum
-  pfiles = GV%ParFilesPerSnap
+  iSnap  = CV%StartSnapNum
+  fSnap  = CV%EndSnapNum
+  pfiles = CV%ParFilesPerSnap
 
   if ( allocated(saved_gheads) ) deallocate(saved_gheads)
   allocate( saved_gheads(iSnap:fSnap, 0:pfiles-1) )
@@ -74,7 +75,7 @@ subroutine get_planning_data_gadget_public()
   do i = iSnap,fSnap
      do j = 0,pfiles-1
 
-        call form_gadget_snapshot_file_name(GV%SnapPath, GV%ParFileBase, i, j, snapfile, hdf5bool=.false.)
+        call form_gadget_snapshot_file_name(CV%SnapPath, CV%ParFileBase, i, j, snapfile, hdf5bool=.false.)
         write(loglun,'(I3,"  ",A)') i, trim(snapfile)
 
         call gadget_public_header_read_file( ghead, snapfile )
@@ -100,10 +101,10 @@ subroutine get_planning_data_gadget_public()
            stop
         end if
 
-        if (GV%Comoving) then
+        if (CV%Comoving) then
            PLAN%snap(i)%ScalefacAt = ghead%a
            PLAN%snap(i)%TimeAt = gadget_public_header_return_gyr(ghead) * (gconst%SEC_PER_MEGAYEAR * 1.0d3) ! in seconds
-           PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time ! in code units
+           PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * ghead%h / GV%cgs_time ! in code units
         else
            PLAN%snap(i)%ScalefacAt = 1.0d0 / (1.0d0 + ghead%z)
            PLAN%snap(i)%TimeAt = ghead%a
@@ -131,7 +132,7 @@ subroutine get_planning_data_gadget_public()
   ! write units to log file
   !===================================================
 
-  logfile = trim(GV%OutputDir) // "/" // "code_units.log"
+  logfile = trim(CV%OutputDir) // "/" // "code_units.log"
   call open_formatted_file_w(logfile,loglun)
   call gadget_units_print_lun(gunits, loglun, saved_gheads(iSnap,0)%h)
   close(loglun)
@@ -220,7 +221,7 @@ subroutine read_Gpublic_particles()
 
      ! begin read
      !-----------------------------------------------------------!  
-     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
+     call form_gadget_snapshot_file_name(CV%SnapPath,CV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
      call gadget_public_header_read_lun(ghead,lun)
@@ -333,15 +334,15 @@ subroutine read_Gpublic_particles()
   psys%par(:)%xHI = 1.0d0
   psys%par(:)%xHII = 0.0d0
   psys%par(:)%ye = psys%par(:)%xHII
-  call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
+  call set_temp_from_u(psys, CV%H_mf, GV%cgs_enrg, GV%cgs_mass)
 
 
   ! now we have temperatures, we will set the ionization
   ! state to collisional equilibrium.
   !-----------------------------------------------------
   caseA = .false.
-  if (GV%HydrogenCaseA) caseA(1) = .true.
-  if (GV%HeliumCaseA)   caseA(2) = .true.
+  if (CV%HydrogenCaseA) caseA(1) = .true.
+  if (CV%HeliumCaseA)   caseA(2) = .true.
 
   DoH = .true.
 #ifdef incHe
@@ -351,7 +352,7 @@ subroutine read_Gpublic_particles()
 #endif
 
   call particle_system_set_ci_eq( psys, caseA, DoH, DoHe, fit='hui' )
-  call particle_system_set_ye( psys, GV%H_mf, GV%He_mf, GV%NeBackground )
+  call particle_system_set_ye( psys, CV%H_mf, CV%He_mf, CV%NeBackground )
 
 
 end subroutine read_Gpublic_particles

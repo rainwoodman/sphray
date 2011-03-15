@@ -15,6 +15,7 @@ use spectra_mod, only: read_spectra_file
 use atomic_rates_mod, only: read_atomic_rates_file, get_atomic_rates 
 use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use main_input_mod, only: get_planning_data
+use config_mod, only: CV
 use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
 use particle_system_mod, only: return_bytes_per_particle
 use particle_system_mod, only: return_bytes_per_source
@@ -36,16 +37,16 @@ subroutine initialize(config_file)
 
   call read_config_file(config_file)
 
-  call init_mersenne_twister(GV%IntSeed)
-  call read_b2cd_file(GV%b2cdFile)
-  call read_spectra_file(GV%SpectraFile)
+  call init_mersenne_twister(CV%IntSeed)
+  call read_b2cd_file(CV%b2cdFile)
+  call read_spectra_file(CV%SpectraFile)
 
-  call read_atomic_rates_file(rtable, GV%AtomicRatesFile)
-  call write_atomic_rates_to_log_file(rtable, GV%OutputDir)
+  call read_atomic_rates_file(rtable, CV%AtomicRatesFile)
+  call write_atomic_rates_to_log_file(rtable, CV%OutputDir)
 
   call get_atomic_rates(1.0d4, rtable, xHII_k)
-  if (GV%IsoTemp > 0.0) then
-     call get_atomic_rates(GV%IsoTemp, rtable, isoT_k)
+  if (CV%IsoTemp > 0.0) then
+     call get_atomic_rates(CV%IsoTemp, rtable, isoT_k)
   end if
 
   call get_planning_data()
@@ -90,8 +91,8 @@ subroutine do_output_planning()
 
   call mywrite("   doing output planning",verb) 
   
-  Ni = GV%StartSnapNum
-  Nf = GV%EndSnapNum
+  Ni = CV%StartSnapNum
+  Nf = CV%EndSnapNum
 
   GV%Nsnaps = Nf - Ni + 1
   
@@ -110,10 +111,10 @@ subroutine do_output_planning()
 
   ! convert static field sim time to code time if need be
   !-------------------------------------------------------
-  if ( trim(GV%StaticSimTimeUnit) == "myr" ) then
-     GV%StaticFieldSimTime = GV%StaticFieldSimTime * gconst%sec_per_megayear ! [s]
-     GV%StaticFieldSimTime = GV%StaticFieldSimTime * GV%LittleH              ! [s/h]
-     GV%StaticFieldSimTime = GV%StaticFieldSimTime / GV%cgs_time             ! [code]
+  if ( trim(CV%StaticSimTimeUnit) == "myr" ) then
+     CV%StaticFieldSimTime = CV%StaticFieldSimTime * gconst%sec_per_megayear ! [s]
+     CV%StaticFieldSimTime = CV%StaticFieldSimTime * GV%LittleH              ! [s/h]
+     CV%StaticFieldSimTime = CV%StaticFieldSimTime / GV%cgs_time             ! [code]
   end if
   
 
@@ -121,10 +122,10 @@ subroutine do_output_planning()
   !-----------------------
   if (GV%Nsnaps==1) then          
 
-     PLAN%snap(Ni)%RunTime   = GV%StaticFieldSimTime    ! from config
+     PLAN%snap(Ni)%RunTime   = CV%StaticFieldSimTime    ! from config
      PLAN%snap(Ni)%StartTime = PLAN%snap(Ni)%TimeAt     ! from header
 
-     GV%TotalSimTime = GV%StaticFieldSimTime            ! from config
+     GV%TotalSimTime = CV%StaticFieldSimTime            ! from config
 
   ! for multiple snapshots
   !------------------------
@@ -162,8 +163,8 @@ subroutine do_output_planning()
   GV%OutputIndx = 1 
   
   ! == for standard output == 
-  if (trim(GV%OutputTiming)=="standard") then
-     GV%NumTotOuts = GV%NumStdOuts
+  if (trim(CV%OutputTiming)=="standard") then
+     GV%NumTotOuts = CV%NumStdOuts
      allocate( PLAN%OutputTimes(1:GV%NumTotOuts) )
      do i = 1,GV%NumTotOuts
         PLAN%OutputTimes(i) = PLAN%snap(Ni)%StartTime + i * GV%TotalSimTime / GV%NumTotOuts
@@ -172,13 +173,13 @@ subroutine do_output_planning()
 
      
   ! == for forced output == 
-  else if (trim(GV%OutputTiming)=="forced") then
-     inquire(file=GV%ForcedOutFile,exist=fthere)
+  else if (trim(CV%OutputTiming)=="forced") then
+     inquire(file=CV%ForcedOutFile,exist=fthere)
      if (.not. fthere) then
-        str = "  cannot find forced output times file: " // trim(GV%ForcedOutFile)
+        str = "  cannot find forced output times file: " // trim(CV%ForcedOutFile)
         call myerr(str,myname,crash)
      end if
-     call open_formatted_file_r(GV%ForcedOutFile,lun)
+     call open_formatted_file_r(CV%ForcedOutFile,lun)
      read(lun,*) GV%NumTotOuts
      allocate( PLAN%OutputTimes(GV%NumTotOuts) )
      do i = 1,GV%NumTotOuts
@@ -188,7 +189,7 @@ subroutine do_output_planning()
 
      ! convert forced output times to code units if need be
      !------------------------------------------------------
-     if ( trim(GV%ForcedUnits) == "myr" ) then
+     if ( trim(CV%ForcedUnits) == "myr" ) then
         PLAN%OutputTimes = PLAN%OutputTimes * gconst%sec_per_megayear  ! [s]
         PLAN%OutputTimes = PLAN%OutputTimes * GV%LittleH               ! [s/h]
         PLAN%OutputTimes = PLAN%OutputTimes / GV%cgs_time              ! [code]
@@ -197,12 +198,12 @@ subroutine do_output_planning()
   end if   
 
 
-  GV%outplan_file = trim(GV%OutputDir) // "/" // "output_planning.log"
+  GV%outplan_file = trim(CV%OutputDir) // "/" // "output_planning.log"
   call open_formatted_file_w(GV%outplan_file,lun)
-  write(lun,'(A,A,A)') "planning output times (OutputTiming = ", trim(GV%OutputTiming), ")"
+  write(lun,'(A,A,A)') "planning output times (OutputTiming = ", trim(CV%OutputTiming), ")"
   
   write(lun,'(A,I3,A)') "SPHRAY will generate", GV%NumTotOuts, " full outputs"
-  if (GV%DoInitialOutput) write(lun,'(A)') "plus one initial full output"
+  if (CV%DoInitialOutput) write(lun,'(A)') "plus one initial full output"
   write(lun,*) 
 
   write(lun,*) "start time [code]: ", PLAN%snap(Ni)%StartTime
@@ -245,21 +246,21 @@ subroutine do_ray_planning()
 
   code2Myr = GV%cgs_time / GV%LittleH / gconst%sec_per_megayear
 
-  GV%rayplan_file = trim(GV%OutputDir) // "/" // "raytracing_planning.log"
+  GV%rayplan_file = trim(CV%OutputDir) // "/" // "raytracing_planning.log"
   call open_formatted_file_w(GV%rayplan_file,lun)
 
 
-  if (trim(GV%RayScheme)=="header") then
+  if (trim(CV%RayScheme)=="header") then
      ! this works for multiple snapshots.  the number of rays to trace
      ! has already been read from the source files
-     write(lun,*) "RayScheme in cofig file = ", trim(GV%RayScheme)
+     write(lun,*) "RayScheme in cofig file = ", trim(CV%RayScheme)
      write(lun,*) "Using ray numbers in source file header(s)"
      PLAN%snap(:)%SrcRays = PLAN%snap(:)%RaysFromSrcHeader
 
-  else if(trim(GV%RayScheme)=="raynum") then
-     if (GV%StartSnapNum==GV%EndSnapNum) then ! static field simulation
-        PLAN%snap(GV%StartSnapNum)%SrcRays = GV%ForcedRayNumber
-     else if (GV%StartSnapNum/=GV%EndSnapNum) then ! multiple snapshots
+  else if(trim(CV%RayScheme)=="raynum") then
+     if (CV%StartSnapNum==CV%EndSnapNum) then ! static field simulation
+        PLAN%snap(CV%StartSnapNum)%SrcRays = CV%ForcedRayNumber
+     else if (CV%StartSnapNum/=CV%EndSnapNum) then ! multiple snapshots
         write(*,*) "ForcedRayNumber ray planning for multiple snapshot runs "
         write(*,*) "not supported yet.  Please specify the number of rays "
         write(*,*) "in the source file headers and set RayScheme = 'header' "
@@ -273,7 +274,7 @@ subroutine do_ray_planning()
 
   else
      write(*,*) "keyword RayScheme not specefied correctly"
-     write(*,*) "RayScheme = ", trim(GV%RayScheme)
+     write(*,*) "RayScheme = ", trim(CV%RayScheme)
      write(*,*) "please edit the config file. "
      stop
   end if
@@ -281,8 +282,8 @@ subroutine do_ray_planning()
 
   99 format(A,I3,4A,L5,A)
   write(lun,99) "ray planning: snapshots = ", GV%Nsnaps, &
-                   " (RayScheme = ", trim(GV%RayScheme),")", &
-                   " (Comoving =", GV%Comoving,")"
+                   " (RayScheme = ", trim(CV%RayScheme),")", &
+                   " (Comoving =", CV%Comoving,")"
 
   write(lun,*) 
   write(lun,*) 
@@ -294,7 +295,7 @@ subroutine do_ray_planning()
 
   write(lun,*) "ray plan in code units"
   write(lun,100) "snap", "t @ snap", "t start", "t end", "dt", "Src rays"
-  do i = GV%StartSnapNum,GV%EndSnapNum
+  do i = CV%StartSnapNum,CV%EndSnapNum
      write(lun,101) i, & 
                        PLAN%snap(i)%TimeAt, &
                        PLAN%snap(i)%StartTime, &
@@ -309,7 +310,7 @@ subroutine do_ray_planning()
 
   write(lun,*) "ray plan in Myrs"
   write(lun,100) "snap", "t @ snap", "t start", "t end", "dt", "Src rays"
-  do i = GV%StartSnapNum,GV%EndSnapNum
+  do i = CV%StartSnapNum,CV%EndSnapNum
      write(lun,101) i, & 
                        PLAN%snap(i)%TimeAt * code2Myr, &
                        PLAN%snap(i)%StartTime * code2Myr, &
@@ -352,16 +353,16 @@ subroutine initialize_global_variables()
   ! calculate total number of rays to be traced
   !----------------------------------------------------------------------
   nrays=0_i8b
-  do i = GV%StartSnapNum, GV%EndSnapNum
+  do i = CV%StartSnapNum, CV%EndSnapNum
      nrays = nrays + PLAN%snap(i)%SrcRays
   end do
 
 
   ! report ionization solver being used and particle/source mem footprint
   !----------------------------------------------------------------------
-  if (GV%IonTempSolver == 1) then
+  if (CV%IonTempSolver == 1) then
      call mywrite("   using Implicit Euler ionization solver",verb)
-  else if (GV%IonTempSolver == 2) then
+  else if (CV%IonTempSolver == 2) then
      call mywrite("   using Backwards Difference ionization solver",verb)
   end if
 
@@ -376,17 +377,17 @@ subroutine initialize_global_variables()
 
   ! open log files
   !-----------------
-  GV%ionfrac_file = trim(GV%OutputDir) // "/ionfrac.log"
+  GV%ionfrac_file = trim(CV%OutputDir) // "/ionfrac.log"
   call open_formatted_file_w(GV%ionfrac_file,GV%ionlun)
 
-  GV%pardata_file = trim(GV%OutputDir) // "/particle_data.log"
+  GV%pardata_file = trim(CV%OutputDir) // "/particle_data.log"
   call open_formatted_file_w(GV%pardata_file,GV%pardatalun)
 
-  GV%srcdata_file = trim(GV%OutputDir) // "/source_data.log"
+  GV%srcdata_file = trim(CV%OutputDir) // "/source_data.log"
   call open_formatted_file_w(GV%srcdata_file,GV%srcdatalun)
 
-  GV%raystat_file = trim(GV%OutputDir) // "/raystats.dat"
-  if (GV%raystats) then
+  GV%raystat_file = trim(CV%OutputDir) // "/raystats.dat"
+  if (CV%raystats) then
      raystatbuffsize = nrays / 10
      call open_unformatted_file_w(GV%raystat_file, GV%raystatlun)
   end if
@@ -395,11 +396,11 @@ subroutine initialize_global_variables()
                  
   ! initialize counters and timers
   !---------------------------------
-  GV%CurSnapNum = GV%StartSnapNum
+  GV%CurSnapNum = CV%StartSnapNum
   GV%MB = zero
  
   GV%itime = 0_i8b
-  GV%start_time_code = PLAN%snap(GV%StartSnapNum)%StartTime
+  GV%start_time_code = PLAN%snap(CV%StartSnapNum)%StartTime
   GV%start_time_s    = GV%start_time_code * GV%cgs_time / GV%LittleH
   GV%start_time_myr  = GV%start_time_s / gconst%sec_per_megayear
 

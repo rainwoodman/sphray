@@ -22,6 +22,7 @@ use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: GV, saved_gheads, rtable
 use global_mod, only: active_rays
 
+use config_mod, only: CV
 implicit none
 
 private
@@ -46,16 +47,16 @@ subroutine set_bools( He, caseA, isoT, fixT )
 #endif
 
   caseA = .false.
-  if (GV%HydrogenCaseA) caseA(1) = .true.
-  if (GV%HeliumCaseA)   caseA(2) = .true.
+  if (CV%HydrogenCaseA) caseA(1) = .true.
+  if (CV%HeliumCaseA)   caseA(2) = .true.
 
-  if (GV%IsoTemp > 0.0) then
+  if (CV%IsoTemp > 0.0) then
      isoT = .true.
   else
      isoT = .false.
   end if
 
-  if (GV%FixSnapTemp) then
+  if (CV%FixSnapTemp) then
      fixT = .true.
   else
      fixT = .false.
@@ -136,10 +137,10 @@ subroutine update_raylist(raylist, pars, box)
 !     write(*,*) 
 
      if (ray%srcray) then
-        if (GV%IonTempSolver==1) then
+        if (CV%IonTempSolver==1) then
            call eulerint(ipar,scalls,photo,caseA,He,isoT,fixT)
            ipar%strtag = "on_eulerint_output"
-        else if (GV%IonTempSolver==2) then
+        else if (CV%IonTempSolver==2) then
            call bdfint(ipar,scalls,photo,caseA,He,isoT,fixT)
            ipar%strtag = "on_bdfint_output"
         end if
@@ -158,7 +159,7 @@ subroutine update_raylist(raylist, pars, box)
      !  put the updated particle data into the particle system
      !===========================================================
      call ionpar2par(ipar,par)
-     if (par%T < GV%Tfloor) par%T = GV%Tfloor
+     if (par%T < CV%Tfloor) par%T = CV%Tfloor
 
 #ifdef outGammaHI
      par%gammaHI = pars(ipar%index)%gammaHI + ipar%gammaHI * ipar%dt_s
@@ -193,7 +194,7 @@ subroutine update_raylist(raylist, pars, box)
      stop 'read the code here'
      if (ray%srcray) then
         if (.not. pars(intersection%pindx)%OnRecList) then
-           if (pars(intersection%pindx)%xHIIrc > GV%RecRayTol) then
+           if (pars(intersection%pindx)%xHIIrc > CV%RecRayTol) then
               pars(intersection%pindx)%OnRecList = .true.
               GV%recpt = GV%recpt + 1
               reclist(GV%recpt) = intersection%pindx
@@ -207,7 +208,7 @@ subroutine update_raylist(raylist, pars, box)
      !  determine if we move to the next particle and track some ray stats
      !=====================================================================
 
-     if (GV%RayDepletion) then
+     if (CV%RayDepletion) then
         ray%pcnt = ray%pcnt - ipar%pdeps
      endif
      
@@ -215,7 +216,7 @@ subroutine update_raylist(raylist, pars, box)
      ! if photons are exhausted
      !-------------------------------
      if (ray%pini > 0.0) then
-        if (ray%pcnt / ray%pini < GV%RayPhotonTol) then
+        if (ray%pcnt / ray%pini < CV%RayPhotonTol) then
            exit
         end if
      end if
