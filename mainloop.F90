@@ -24,7 +24,7 @@ module mainloop_mod
   use global_mod, only: GV
   use global_mod, only: PLAN
   use global_mod, only: active_rays
-
+  use config_mod, only: CV
 
   
   implicit none
@@ -77,7 +77,7 @@ contains
     
     ! loop over the snapshots 
     !=========================
-    snaps: do snapn = GV%StartSnapNum, GV%EndSnapNum
+    snaps: do snapn = CV%StartSnapNum, CV%EndSnapNum
 
        !  read in particle and source snapshot
        !----------------------------------------------------------------      
@@ -86,17 +86,17 @@ contains
               
        !  build oct tree.  only need to do this once per snap (for now)
        !----------------------------------------------------------------
-       call buildtree(psys,tree,MB,GV%PartPerCell)
+       call buildtree(psys,tree,MB,CV%PartPerCell)
        GV%MB = GV%MB + MB
        call setparticleorder(psys, tree)             
        
       
-       if (GV%raystats) then
+       if (CV%raystats) then
           write(GV%raystatlun) PLAN%snap(snapn)%SrcRays, raystatbuffsize 
        endif
        
 
-       if(GV%JustInit) then
+       if(CV%JustInit) then
           write(str,"(A,F10.2)") "total memory allocated [MB] = ", GV%MB
           call mywrite(str,verb)
           call mywrite("just initializing", verb)
@@ -105,7 +105,7 @@ contains
        end if
 
        
-       if (GV%DoInitialOutput) then
+       if (CV%DoInitialOutput) then
           GV%OutputIndx = 0
           call output_total_snap(psys)      
           GV%OutputIndx = 1
@@ -114,14 +114,14 @@ contains
        
        ! begin ray tracing 
        !------------------------- 
-       allocate(active_rays(GV%IonFracOutRays))
+       allocate(active_rays(CV%IonFracOutRays))
        GV%rayoops = 0
        GV%totalhits = 0
 
-       src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays, GV%IonFracOutRays
+       src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays, CV%IonFracOutRays
 
           
-          do raym = 1, GV%IonFracOutRays
+          do raym = 1, CV%IonFracOutRays
             ! begin creation of a ray
             GV%TotalSourceRaysCast = GV%TotalSourceRaysCast + 1                
             GV%itime = GV%itime + 1
@@ -141,7 +141,7 @@ contains
             call src_ray_make( active_rays(raym), psys%src(srcn), GV%itime, GV%dt_s, GV%Lunit, psys%box )
 
             ! begin stat
-            if (GV%raystats) then
+            if (CV%raystats) then
              
                raystatcnt = raystatcnt + 1
              
@@ -162,11 +162,11 @@ contains
           ! done creation of a ray
           enddo
 
-         !$OMP PARALLEL FIRSTPRIVATE(raym, raylist, rayoops, TID)
+         !$OMP PARALLEL FIRSTPRIVATE(raym, rayoops, TID) PRIVATE(raylist)
          TID = OMP_GET_THREAD_NUM()
          PRINT *, 'Hello from thread', TID
          !$OMP DO SCHEDULE(DYNAMIC, 1)
-          do raym = 1, GV%IonFracOutRays
+          do raym = 1, CV%IonFracOutRays
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylist, active_rays(raym))
             call trace_ray(raylist, psys, tree) 
@@ -194,13 +194,13 @@ contains
           if ( GV%OutputIndx <= GV%NumTotOuts ) then
              
              ! set correct time marker unit
-             if ( trim(GV%OutputTiming) == "standard" ) then
+             if ( trim(CV%OutputTiming) == "standard" ) then
                 
                 outmark = GV%start_time_code + GV%itime * GV%dt_code
                 
-             else if ( trim(GV%OutputTiming) == "forced" ) then
+             else if ( trim(CV%OutputTiming) == "forced" ) then
                 
-                if (trim(GV%ForcedUnits) == "mwionfrac") then
+                if (trim(CV%ForcedUnits) == "mwionfrac") then
                    outmark = GV%mwionfrac
                 else 
                    outmark = GV%itime * GV%dt_code
@@ -208,7 +208,7 @@ contains
                 
              else
                 
-                write(*,*) "output type ", trim(GV%OutputTiming), "not recognized"
+                write(*,*) "output type ", trim(CV%OutputTiming), "not recognized"
                 stop 
                 
              end if
@@ -226,7 +226,7 @@ contains
           
           ! if we are on the last ray and we havent gotten to the last 
           ! output, do a full output.
-          if ( snapn == GV%EndSnapNum ) then
+          if ( snapn == CV%EndSnapNum ) then
              if ( GV%OutputIndx <= GV%NumTotOuts ) then
                 if ( GV%TotalSourceRaysCast==PLAN%snap(snapn)%SrcRays ) then
                    write(*,*) "doing an output on the last ray"
@@ -249,7 +249,7 @@ contains
     close(GV%ionlun)
     
     
-    if (GV%raystats) then
+    if (CV%raystats) then
        close(GV%raystatlun)
     end if
     

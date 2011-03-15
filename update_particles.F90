@@ -10,7 +10,8 @@ use gadget_cosmoBH_input_mod
 use gadget_owls_input_mod
 use gadget_vbromm_input_mod
 use gadget_public_input_hdf5_mod
-use global_mod, only: psys, GV
+use global_mod, only: psys
+use config_mod, only: CV
 implicit none
 private
 
@@ -101,15 +102,15 @@ subroutine update_particles()
   ! deallocate the current particle array and read new particle data
   !==================================================================
   deallocate( psys%par )
-  if (GV%InputType == 1) then
+  if (CV%InputType == 1) then
      call read_Gpublic_particles()
-  else if (GV%InputType == 2) then
+  else if (CV%InputType == 2) then
      call read_GcosmoBH_particles()
-  else if (GV%InputType == 3) then
+  else if (CV%InputType == 3) then
      call read_Gowls_particles()
-  else if (GV%InputType == 4) then
+  else if (CV%InputType == 4) then
      call read_Gvbromm_particles()
-  else if (GV%InputType == 5) then
+  else if (CV%InputType == 5) then
      call read_Gpubhdf5_particles()
   end if
   minIDnew = minval(psys%par%id)
@@ -146,7 +147,7 @@ subroutine update_particles()
         if (err/=0) call myerr("reordering id error",myname,crash)
      end if
 
-     if (.not. GV%FixSnapTemp) then
+     if (.not. CV%FixSnapTemp) then
         psys%par(i)%T = Told(indx)
      end if
 

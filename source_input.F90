@@ -8,6 +8,7 @@ use myf03_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: source_type
 use global_mod, only: psys, GV, PLAN
+use config_mod, only: CV
 implicit none
 
 !> source header type 
@@ -71,15 +72,15 @@ subroutine get_planning_data_sources()
 
   ! these global variables are read from the config file
   !======================================================
-  iSnap = GV%StartSnapNum
-  fSnap = GV%EndSnapNum
+  iSnap = CV%StartSnapNum
+  fSnap = CV%EndSnapNum
     
-  sfiles = GV%SourceFilesPerSnap
+  sfiles = CV%SourceFilesPerSnap
 
 
   ! open up the planning data log file
   !======================================================
-  logfile = trim(GV%OutputDir) // "/" // "source_headers.log"
+  logfile = trim(CV%OutputDir) // "/" // "source_headers.log"
   call open_formatted_file_w(logfile,loglun)
 
   ! read all source headers and write to log file
@@ -88,7 +89,7 @@ subroutine get_planning_data_sources()
   write(loglun,'(A)') "reading all source header(s) ... "
   do i = iSnap,fSnap
      do j = 1,sfiles
-        call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,i,j,snapfile)
+        call form_snapshot_file_name(CV%SourcePath,CV%SourceFileBase,i,j,snapfile)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
         call mywrite('   srcfile = '//trim(snapfile) , verb)
 
@@ -130,7 +131,7 @@ subroutine read_src_snapshot()
   real(r8b) :: MB
 
   fn=1
-  call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,GV%CurSnapNum,fn,snapfile)
+  call form_snapshot_file_name(CV%SourcePath,CV%SourceFileBase,GV%CurSnapNum,fn,snapfile)
       
   closefile = .false.
   call read_source_header(snapfile,shead,lun,closefile)

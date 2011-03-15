@@ -17,6 +17,7 @@ use source_input_mod
 use particle_system_mod
 
 use atomic_rates_mod, only: get_atomic_rates
+use config_mod, only: CV
 use global_mod, only: PLAN, GV, rtable, cmbT_k
 use global_mod, only: psys, saved_gheads
 implicit none
@@ -35,13 +36,13 @@ subroutine get_planning_data()
   call mywrite("",verb) 
 
 
-  GV%Nsnaps = GV%EndSnapNum - GV%StartSnapNum + 1
+  GV%Nsnaps = CV%EndSnapNum - CV%StartSnapNum + 1
   if (allocated(PLAN%snap)) deallocate(PLAN%snap)
-  allocate( PLAN%snap(GV%StartSnapNum : GV%EndSnapNum) )
+  allocate( PLAN%snap(CV%StartSnapNum : CV%EndSnapNum) )
 
   ! branch on input type 
   !-------------------------------------------------------------------
-  select case (GV%InputType)
+  select case (CV%InputType)
   case(1)
      call get_planning_data_gadget_public()
   case(2)
@@ -89,22 +90,22 @@ subroutine readin_snapshot()
   ! report readin type
   !======================
   call mywrite('   input type = ', verb, adv=.false.)
-  if (GV%InputType==1) then
+  if (CV%InputType==1) then
      call mywrite(" Gadget-2 Public (SnapFormat=1)", verb)
-  else if (GV%InputType==2) then
+  else if (CV%InputType==2) then
      call mywrite(" Gadget CosmoBH w/ ye and xHI (SnapFormat=1)", verb)
-  else if (GV%InputType==3) then
+  else if (CV%InputType==3) then
      call mywrite(" Gadget OWLS/GIMIC HDF5", verb)
-  else if (GV%InputType==4) then
+  else if (CV%InputType==4) then
      call mywrite(" Gadget Volker Bromm", verb)
-  else if (GV%InputType==5) then
+  else if (CV%InputType==5) then
      call mywrite(" Gadget-2 Public HDF5", verb)
   end if
  
   ! read in the particle data
   !=============================
   first = .false.
-  if (GV%CurSnapNum == GV%StartSnapNum) then
+  if (GV%CurSnapNum == CV%StartSnapNum) then
      first = .true.
   else
      GV%CurSnapNum = GV%CurSnapNum + 1
@@ -112,7 +113,7 @@ subroutine readin_snapshot()
 
   ! gadget public (no ionization fractions)
   !---------------------------------------------------------------
-  if (GV%InputType == 1) then
+  if (CV%InputType == 1) then
 
      if (first) then
         call read_Gpublic_particles()
@@ -123,7 +124,7 @@ subroutine readin_snapshot()
 
   ! gadget cosmoBH w/ cooling (i.e. ye and xHI)
   !---------------------------------------------------------------
-  else if (GV%InputType == 2) then
+  else if (CV%InputType == 2) then
 
      if (first) then
         call read_GcosmoBH_particles()
@@ -134,7 +135,7 @@ subroutine readin_snapshot()
      
   ! gadget OWLS/GIMIC HDF5
   !---------------------------------------------------------------
-  else if (GV%InputType == 3) then 
+  else if (CV%InputType == 3) then 
      
      if (first) then
         call read_Gowls_particles()
@@ -145,7 +146,7 @@ subroutine readin_snapshot()
      
   ! gadget w/ ions from Volker Bromm's group 
   !---------------------------------------------------------------
-  else if (GV%InputType == 4) then
+  else if (CV%InputType == 4) then
 
      if (first) then
         call read_Gvbromm_particles()
@@ -156,7 +157,7 @@ subroutine readin_snapshot()
 
   ! gadget public HDF5 (no ionization fractions)
   !---------------------------------------------------------------
-  else if (GV%InputType == 5) then
+  else if (CV%InputType == 5) then
 
      if (first) then
         call read_Gpubhdf5_particles()
@@ -168,7 +169,7 @@ subroutine readin_snapshot()
   ! not recognized
   !---------------------------------------------------------------
   else
-     write(str,*) "input type, ", GV%InputType, "not recognized" 
+     write(str,*) "input type, ", CV%InputType, "not recognized" 
      call myerr(str,myname,crash)
   end if
 
@@ -184,8 +185,8 @@ subroutine readin_snapshot()
   psys%box%vol    = product( psys%box%lens )
   psys%box%vol_cm = product( psys%box%lens_cm )
 
-  psys%box%tbound = GV%BndryCond
-  psys%box%bbound = GV%BndryCond
+  psys%box%tbound = CV%BndryCond
+  psys%box%bbound = CV%BndryCond
 
 
   ! read in the source data
@@ -207,8 +208,8 @@ subroutine readin_snapshot()
   ! set par and src file bases for output to logfiles
   !====================================================
   fmt = "(A,'/',A,'_',I3.3)"
-  write(snpbase,fmt) trim(GV%SnapPath),   trim(GV%ParFileBase),    GV%CurSnapNum
-  write(srcbase,fmt) trim(GV%SourcePath), trim(GV%SourceFileBase), GV%CurSnapNum
+  write(snpbase,fmt) trim(CV%SnapPath),   trim(CV%ParFileBase),    GV%CurSnapNum
+  write(srcbase,fmt) trim(CV%SourcePath), trim(CV%SourceFileBase), GV%CurSnapNum
 
 
   ! write fresh reads to the particle_data.log and source_data.log files
@@ -242,7 +243,7 @@ subroutine readin_snapshot()
 
   ! scale the data if we need to
   !=====================================================================
-  if(GV%Comoving) then
+  if(CV%Comoving) then
      call particle_system_scale_comoving_to_physical(psys, a, h)
 !     call psys%scale_comoving_to_physical(a, h)
   endif
@@ -297,19 +298,19 @@ subroutine readin_snapshot()
 
   ! check test conditionals 
   !==========================================================
-  if (GV%DoTestScenario) then
+  if (CV%DoTestScenario) then
 
-     if ( trim(GV%TestScenario) == "iliev_test1") then
+     if ( trim(CV%TestScenario) == "iliev_test1") then
         psys%par(:)%xHII = 1.2d-3
         psys%par(:)%xHI = 1.0d0 - psys%par(:)%xHII
         psys%par(:)%T = 1.0d4
 
-     else if ( trim(GV%TestScenario) == "iliev_test2" ) then
+     else if ( trim(CV%TestScenario) == "iliev_test2" ) then
         psys%par(:)%xHII = 0.0d0
         psys%par(:)%xHI = 1.0d0 - psys%par(:)%xHII
         psys%par(:)%T = 1.0d2
 
-     else if ( trim(GV%TestScenario) == "iliev_test1He" ) then
+     else if ( trim(CV%TestScenario) == "iliev_test1He" ) then
         psys%par(:)%xHI = 1.0d0
         psys%par(:)%xHII = 0.0d0
 #ifdef incHe
@@ -329,9 +330,9 @@ subroutine readin_snapshot()
 #ifdef incEOS
   if (first) then
      do i = 1, size(psys%par(:))
-        if (GV%EOStemp > 0.0) then
+        if (CV%EOStemp > 0.0) then
            if (psys%par(i)%eos > 0.0) then
-              psys%par(i)%T = GV%EOStemp
+              psys%par(i)%T = CV%EOStemp
            endif
         endif
      enddo
@@ -344,9 +345,9 @@ subroutine readin_snapshot()
 #ifdef incSFR
   if (first) then
      do i = 1, size(psys%par(:))
-        if (GV%EOStemp > 0.0) then
+        if (CV%EOStemp > 0.0) then
            if (psys%par(i)%sfr > 0.0) then
-              psys%par(i)%T = GV%EOStemp
+              psys%par(i)%T = CV%EOStemp
            endif
         endif
      enddo
@@ -359,10 +360,10 @@ subroutine readin_snapshot()
   ! set neutral or ionized if we need to
   !=======================================================
 if (first) then
-   if (GV%InitxHI > 0.0) then
-      psys%par(:)%xHI  = GV%InitxHI
-      psys%par(:)%xHII = 1.0d0 - GV%InitxHI
-      call particle_system_set_ye( psys, GV%H_mf, GV%He_mf, GV%NeBackground )
+   if (CV%InitxHI > 0.0) then
+      psys%par(:)%xHI  = CV%InitxHI
+      psys%par(:)%xHII = 1.0d0 - CV%InitxHI
+      call particle_system_set_ye( psys, CV%H_mf, CV%He_mf, CV%NeBackground )
    endif
 endif
 
@@ -370,14 +371,14 @@ endif
 
   ! set constant temperature if we have one
   !=======================================================
-  if (GV%IsoTemp > 0.0) psys%par(:)%T = GV%IsoTemp
+  if (CV%IsoTemp > 0.0) psys%par(:)%T = CV%IsoTemp
 
 
 
   ! cap the ionization fractions and temperatures if we have to
   !================================================================
   call particle_system_enforce_x_and_T_minmax( &
-       psys, GV%xfloor, GV%xceiling, GV%Tfloor, GV%Tceiling )
+       psys, CV%xfloor, CV%xceiling, CV%Tfloor, CV%Tceiling )
 
 
   ! write data after above conditionals to the particle and source log files
@@ -400,7 +401,7 @@ endif
   ! and the rest of the stuff
   !===============================================================
   GV%dt_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
-  call set_dt_from_dtcode( GV )
+  call set_dt_from_dtcode()
   
   GV%Tcmb_cur = gconst%t_cmb0 / a
   call get_atomic_rates(GV%Tcmb_cur, rtable, cmbT_k)
@@ -416,8 +417,8 @@ endif
   end do
   
   GV%total_atoms = GV%total_mass * GV%cgs_mass * &
-       (GV%H_mf  / (gconst%protonmass) + &
-       GV%He_mf / (4*gconst%protonmass) )
+       (CV%H_mf  / (gconst%protonmass) + &
+       CV%He_mf / (4*gconst%protonmass) )
 
 
   GV%total_photons = (GV%TotalSimTime * GV%cgs_time / GV%LittleH) * (GV%total_lum * GV%Lunit)
@@ -451,8 +452,7 @@ endif
 end subroutine readin_snapshot
 
 
-subroutine set_dt_from_dtcode( GV )
-  type(global_variables_type), intent(inout) :: GV
+subroutine set_dt_from_dtcode()
   type(gadget_constants_type) :: gconst
 
   GV%dt_s    = GV%dt_code * GV%cgs_time / GV%LittleH 

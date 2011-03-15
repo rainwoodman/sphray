@@ -18,6 +18,7 @@ use cen_atomic_rates_mod, only: Osterbrok_HeII_photo_cs
 use cen_atomic_rates_mod, only: Haiman_Bremss_cool
 use cen_atomic_rates_mod, only: Haiman_Comp_Heol
 use global_mod, only: GV
+use config_mod, only: CV
 use hui_gnedin_atomic_rates_mod
 implicit none
 
@@ -252,7 +253,7 @@ function initialize_tau_particle( par, intersection ) result( tpar )
 #ifdef incHmf
   tpar%H_mf   = par%Hmf
 #else
-  tpar%H_mf   = GV%H_mf
+  tpar%H_mf   = CV%H_mf
 #endif
 
   tpar%xHI  = par%xHI
@@ -292,7 +293,7 @@ function initialize_bckgnd_particle( par, gammaHI ) result( bpar )
 #ifdef incHmf
   bpar%H_mf   = par%Hmf
 #else
-  bpar%H_mf   = GV%H_mf
+  bpar%H_mf   = CV%H_mf
 #endif
 
   bpar%gammaHI = gammaHI
@@ -403,13 +404,13 @@ subroutine par2ionpar(par,ipar,index)
 #ifdef incHmf
   ipar%H_mf   = par%Hmf
 #else
-  ipar%H_mf   = GV%H_mf
+  ipar%H_mf   = CV%H_mf
 #endif
 
 #ifdef incHemf
   ipar%He_mf  = par%Hemf
 #else
-  ipar%He_mf  = GV%He_mf
+  ipar%He_mf  = CV%He_mf
 #endif
 
 
@@ -489,7 +490,7 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
   !-----------------------------------------------
   ipar%rayn     = raylist%ray%emit_time
 
-  ipar%NeBckgnd = GV%NeBackground
+  ipar%NeBckgnd = CV%NeBackground
   ipar%Tcmb     = GV%Tcmb_cur
 
   mass_cgs      = ipar%mass * GV%cgs_mass 
@@ -1197,7 +1198,8 @@ subroutine check_x(ip)
 
   if (bad) then
      call ionpar2screen(ip)
-     call tracebackqq()
+!     call tracebackqq()
+!     this isn't defined anywhere: galtay
   end if
 
 end subroutine check_x

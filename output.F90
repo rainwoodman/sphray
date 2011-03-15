@@ -13,6 +13,7 @@ use gadget_sphray_header_class
 use particle_system_mod
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
+use config_mod, only: CV
 use global_mod, only: PLAN, GV
 use global_mod, only: saved_gheads
 use config_mod, only: write_config_hdf5_lun
@@ -166,12 +167,12 @@ contains
      hub   = GV%LittleH
 
      write(*,*) 'output number: ', GV%OutputIndx
-     write(*,*) 'output type:   ', GV%OutputType
+     write(*,*) 'output type:   ', CV%OutputType
      write(*,*) "writing total state of system"
      write(*,*) "time (elapsed code) ", GV%itime * GV%dt_code
      write(*,*) "time (elapsed myr)  ", GV%itime * GV%dt_myr
 
-     if (GV%Comoving) then
+     if (CV%Comoving) then
         call particle_system_scale_physical_to_comoving(psys, scale, hub)
      endif
 
@@ -179,25 +180,25 @@ contains
      write(label,100) GV%OutputIndx
 
 
-     call particle_system_set_ye( psys, GV%H_mf, GV%He_mf, GV%NeBackground )
+     call particle_system_set_ye( psys, CV%H_mf, CV%He_mf, CV%NeBackground )
 
 
      !================================================================
      ! GADGET standard formatted output
      !================================================================
      !================================================================
-     if (GV%OutputType == 1) then
+     if (CV%OutputType == 1) then
         Nread = 0
 
-        do ifile = 0, GV%ParFilesPerSnap-1
+        do ifile = 0, CV%ParFilesPerSnap-1
 
            call config_to_ghead( ifile, ghead )
 
            !    form file name
            write(ext,'(I3)') ifile
 
-           filename = trim(GV%OutputDir) // "/" // trim(GV%OutputFileBase) // "_" // label 
-           if (GV%ParFilesPerSnap > 1) then
+           filename = trim(CV%OutputDir) // "/" // trim(CV%OutputFileBase) // "_" // label 
+           if (CV%ParFilesPerSnap > 1) then
               filename = trim(filename) // "." // trim(adjustl(ext))
            end if
            write(*,*) "writing snapshot state to ", trim(filename)
@@ -239,7 +240,7 @@ contains
 #ifdef incHmf
               Hmf=psys%par(i)%Hmf
 #else
-              Hmf=GV%H_mf
+              Hmf=CV%H_mf
 #endif     
 !-------------------------------
               mu      = 4.0d0 / ( 3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * psys%par(i)%ye )
@@ -320,21 +321,21 @@ contains
      ! GADGET HDF5 formatted output
      !================================================================
      !================================================================
-     if (GV%OutputType == 2) then
+     if (CV%OutputType == 2) then
 
 #ifdef useHDF5
 
         Nread = 0
 
-        do ifile = 0, GV%ParFilesPerSnap-1
+        do ifile = 0, CV%ParFilesPerSnap-1
 
            call config_to_ghead( ifile, ghead )
 
            !    form file name
            write(ext,'(I3)') ifile
 
-           filename = trim(GV%OutputDir) // "/" // trim(GV%OutputFileBase) // "_" // label 
-           if (GV%ParFilesPerSnap > 1) then
+           filename = trim(CV%OutputDir) // "/" // trim(CV%OutputFileBase) // "_" // label 
+           if (CV%ParFilesPerSnap > 1) then
               filename = trim(filename) // "." // trim(adjustl(ext))
            end if
            filename = trim(filename) // ".hdf5"
@@ -540,7 +541,7 @@ contains
      !================================================================
      !================================================================
 
-     if (GV%Comoving) then
+     if (CV%Comoving) then
         call particle_system_scale_comoving_to_physical(psys, scale, hub)
      endif
 
@@ -584,7 +585,7 @@ contains
 
 !    calculate the ionized number, volume, and mass fractions
      Nionfrac = particle_system_mean_xHII_number_weight(psys)
-     Mionfrac = particle_system_mean_xHII_mass_weight(psys, DfltH_mf=GV%H_mf) 
+     Mionfrac = particle_system_mean_xHII_mass_weight(psys, DfltH_mf=CV%H_mf) 
      Vionfrac = particle_system_mean_xHII_volume_weight(psys)
 
      GV%nwionfrac = Nionfrac

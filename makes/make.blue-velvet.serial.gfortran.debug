@@ -1,5 +1,5 @@
 FC= gfortran
-FFLAGS= -g -cpp
+FFLAGS= -g -cpp -fopenmp
 # FFLAGS= -g -cpp -fno-range-check
 
 ISLIB= -L
