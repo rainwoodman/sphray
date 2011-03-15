@@ -166,23 +166,27 @@ contains
          TID = OMP_GET_THREAD_NUM()
          NTRD = OMP_GET_NUM_THREADS()
          PRINT *, 'Hello from thread', TID, NTRD
+         !$OMP SINGLE
          allocate(raylists(NTRD))
+         !$OMP END SINGLE
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do raym = 1, CV%IonFracOutRays
             ! begin ray tracing and updating 
-            call prepare_raysearch(psys, raylists(TID), rayn=raym)
-            call trace_ray(raylists(TID), psys, tree) 
-            call update_raylist(raylists(TID),psys%par,psys%box)
+            call prepare_raysearch(psys, raylists(TID+1), rayn=raym)
+            call trace_ray(raylists(TID+1), psys, tree) 
+            call update_raylist(raylists(TID+1),psys%par,psys%box)
             !$OMP ATOMIC
-            GV%rayoops = GV%rayoops + raylists(TID)%rayoops
+            GV%rayoops = GV%rayoops + raylists(TID+1)%rayoops
             !$OMP ATOMIC
-            GV%totalhits = GV%totalhits + raylists(TID)%lastnnb
+            GV%totalhits = GV%totalhits + raylists(TID+1)%lastnnb
             ! done ray tracing and updating
             ! free up the memory from the globalraylist.
-            call kill_raylist(raylists(TID))
+            call kill_raylist(raylists(TID+1))
           enddo
          !$OMP END DO
+         !$OMP SINGLE
          deallocate(raylists)
+         !$OMP END SINGLE
          !$OMP END PARALLEL
           ! update some really unused global variables only before output
           ! yfeng1
