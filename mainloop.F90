@@ -39,8 +39,8 @@ contains
   !======================================
   subroutine mainloop()
     implicit none
-    integer tid, omp_get_thread_num
-    type(raylist_type) :: raylist       !< ray/particle intersections
+    integer TID, OMP_GET_THREAD_NUM, NTRD, OMP_GET_NUM_THREADS
+    type(raylist_type),allocatable :: raylists(:)       !< ray/particle intersections
     character(clen), parameter :: myname="mainloop"
     logical, parameter :: crash=.true.
     integer, parameter :: verb=1
@@ -162,24 +162,27 @@ contains
           ! done creation of a ray
           enddo
 
-         !$OMP PARALLEL FIRSTPRIVATE(raym, rayoops, TID) PRIVATE(raylist)
+         !$OMP PARALLEL FIRSTPRIVATE(raym, rayoops, TID, NTRD)
          TID = OMP_GET_THREAD_NUM()
-         PRINT *, 'Hello from thread', TID
+         NTRD = OMP_GET_NUM_THREADS()
+         PRINT *, 'Hello from thread', TID, NTRD
+         allocate(raylists(NTRD))
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do raym = 1, CV%IonFracOutRays
             ! begin ray tracing and updating 
-            call prepare_raysearch(psys, raylist, rayn=raym)
-            call trace_ray(raylist, psys, tree) 
-            call update_raylist(raylist,psys%par,psys%box)
+            call prepare_raysearch(psys, raylists(TID), rayn=raym)
+            call trace_ray(raylists(TID), psys, tree) 
+            call update_raylist(raylists(TID),psys%par,psys%box)
             !$OMP ATOMIC
-            GV%rayoops = GV%rayoops + raylist%rayoops
+            GV%rayoops = GV%rayoops + raylists(TID)%rayoops
             !$OMP ATOMIC
-            GV%totalhits = GV%totalhits + raylist%lastnnb
+            GV%totalhits = GV%totalhits + raylists(TID)%lastnnb
             ! done ray tracing and updating
             ! free up the memory from the globalraylist.
-            call kill_raylist(raylist)
+            call kill_raylist(raylists(TID))
           enddo
          !$OMP END DO
+         deallocate(raylists)
          !$OMP END PARALLEL
           ! update some really unused global variables only before output
           ! yfeng1
