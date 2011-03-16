@@ -44,7 +44,6 @@ implicit none
    type raylist_type
       integer :: nnb              !< number of intersections
       integer :: maxnnb           !< maximum number of intersections
-      integer :: lastnnb          !< intersection where we stopped
       integer(i8b) :: searchcell  !< index of cell being searched
       type(intersection_type), allocatable :: intersections(:) !< ray/par 
    end type raylist_type

@@ -57,7 +57,7 @@ contains
     integer(i8b) :: raybatch !< ray counter, at integer batch startings
     integer(i4b) :: rayn  !< ray counter, inner loop
     integer(i8b) :: srcn  !< source counter
-    integer(i8b) :: rayoops !< count of lasthit > ray%itime
+    integer(i8b) :: num_updates !< number of updates performed 
     
     real(r8b) :: rn       !< random number
     real(r8b) :: MB       !< MBs for memory consumption tracking
@@ -161,7 +161,7 @@ contains
           ! done creation of a ray
           enddo
 
-         !$OMP PARALLEL FIRSTPRIVATE(rayn, rayoops, TID, NTRD)
+         !$OMP PARALLEL FIRSTPRIVATE(rayn, TID, NTRD, num_updates)
          TID = OMP_GET_THREAD_NUM()
          NTRD = OMP_GET_NUM_THREADS()
          PRINT *, 'Hello from thread', TID, NTRD
@@ -173,9 +173,9 @@ contains
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylists(TID))
             call trace_ray(rayn, raylists(TID), psys, tree) 
-            call update_raylist(raylists(TID),psys%par,psys%box)
+            call update_raylist(raylists(TID),psys%par,psys%box, num_updates)
             !$OMP ATOMIC
-            GV%ParticleCrossingsTraced = GV%ParticleCrossingsTraced + raylists(TID)%lastnnb
+            GV%ParticleCrossingsTraced = GV%ParticleCrossingsTraced + num_updates
             ! done ray tracing and updating
             ! free up the memory from the globalraylist.
             call kill_raylist(raylists(TID))

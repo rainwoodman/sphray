@@ -68,11 +68,12 @@ end subroutine set_bools
 
 !> updates the particles intersected by a ray 
 !!-----------------------------------------------------------------
-subroutine update_raylist(raylist, pars, box)
+subroutine update_raylist(raylist, pars, box, num_updates)
 
   type(raylist_type), intent(inout) :: raylist !< ray/particle intersections
   type(particle_type), intent(inout) :: pars(:)  !< particle system
   type(box_type), intent(in) :: box  !< particle system
+  integer(i8b), intent(out) :: num_updates
 
   type(particle_type) :: par
   type(ionpart_type) :: ipar
@@ -112,7 +113,7 @@ subroutine update_raylist(raylist, pars, box)
            ! here we have periodic BCs and a particle has been hit
            ! twice by the same ray so we stop tracing 
            GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + ray%pcnt
-           raylist%lastnnb = impact-1
+           num_updates = impact-1
            exit
         else if (box%tbound(1)==0 .and. ray%emit_time == par%lasthit) then
            ! here we have transmissive BCs and a particle has been hit
@@ -149,7 +150,7 @@ subroutine update_raylist(raylist, pars, box)
      end if
      call check_x(ipar)
 
-     raylist%lastnnb = impact
+     num_updates = impact
 
      GV%TotalDerivativeCalls = GV%TotalDerivativeCalls + scalls
      if (scalls .GT. GV%PeakUpdates) GV%PeakUpdates = scalls
