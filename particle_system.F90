@@ -20,7 +20,7 @@ public :: box_type
 public :: box_adjust
 
 public :: source_type
-
+public :: box_set_searchimages
 public :: particle_system_type
 public :: particle_system_scale_comoving_to_physical
 public :: particle_system_scale_physical_to_comoving
@@ -110,6 +110,13 @@ type source_type
    integer(i8b) :: lastemit  !< last ray emitted from this source
 end type source_type
 
+!> transformation type
+!=======================
+type transformation_type
+   integer(i8b) :: fac(1:3)  !< newpos = fac * (oldpos - shift)
+   real(i8b) :: shift(1:3)   !< newpos = fac * (oldpos - shift)
+end type transformation_type
+
 
 
 !> simulation box and boundary conditions
@@ -124,6 +131,7 @@ type box_type
 
    integer(i8b) :: bbound(1:3)  !< BCs for upper faces (0:vac 1:per -1:ref) 
    integer(i8b) :: tbound(1:3)  !< BCs for lower faces (0:vac 1:per -1:ref) 
+   type(transformation_type),allocatable :: trafo(:) !< boundary transformations
 end type box_type
 
 
@@ -137,13 +145,6 @@ end type box_type
      integer(i4b), allocatable :: acc_list(:)       !< access list
   end type particle_system_type
 
-
-!> transformation type
-!=======================
-type transformation_type
-   integer(i8b) :: fac(1:3)  !< newpos = fac * (oldpos - shift)
-   real(i8b) :: shift(1:3)   !< newpos = fac * (oldpos - shift)
-end type transformation_type
 
 
 
@@ -846,6 +847,95 @@ function meanval_real(arr) result (mean)
   mean = mean / size(arr)
 end function meanval_real
 
+
+!> create the transformations for the searchimages
+!-------------------------------------------------
+ subroutine box_set_searchimages(box)
+
+   integer, parameter :: ndim = 3
+   integer, parameter :: nimages = 3**ndim
+   type(box_type), intent(inout) :: box
+   
+   real :: top(ndim)        !< top box corner
+   real :: bot(ndim)        !< bottom box corner
+   integer :: bbound(ndim)  !< bottom BCs
+   integer :: tbound(ndim)  !< top BCs
+   integer :: nsearchimages !< number of valid periodic images
+   type(transformation_type) :: trafo(3**ndim) !< transformations first saved here then copied to box
+   integer :: i_image       !< loop over images counter
+   integer :: i_dim         !< loop over dimensions counter
+  
+   integer :: vec(ndim)     !< vector from origin of base box to origin of image box
+   integer :: fac           !< tmp storage transformation factor for each dimension
+   real    :: shift         !< tmp storage transformation shift for each dimension
+
+   integer :: l
+   real :: lx(ndim),hx(ndim)
+   logical :: boxexists
+
+   top    = box%tops
+   bot    = box%bots
+   bbound = box%bbound
+   tbound = box%tbound
+   
+   nsearchimages = 0
+   
+   do i_image = 0, nimages - 1
+      l = i_image
+      
+      do i_dim = 1, ndim
+         vec(i_dim)=mod(l,3)-1 
+         l=l/3
+      enddo
+      
+      boxexists = .true.
+      
+      do i_dim = 1, ndim
+         lx(i_dim) = bot(i_dim) + vec(i_dim) * ( top(i_dim) - bot(i_dim) )
+         hx(i_dim) = top(i_dim) + vec(i_dim) * ( top(i_dim) - bot(i_dim) )
+         if( vec(i_dim) == -1 .and. bbound(i_dim) == 0) boxexists = .false.  
+         if( vec(i_dim) ==  1 .and. tbound(i_dim) == 0) boxexists = .false.  
+      enddo
+            
+      if (boxexists) then
+         nsearchimages = nsearchimages + 1
+         
+         do i_dim = 1, ndim
+            
+            fac   = 1
+            shift = 0
+            
+            if( vec(i_dim) == -1 ) then
+               fac   = bbound(i_dim)
+               shift = (-3 * fac + 1) * 0.5 * bot(i_dim) + &
+                       (     fac + 1) * 0.5 * top(i_dim)
+            endif
+            
+            if( vec(i_dim) == 1 ) then
+               fac   = tbound(i_dim)
+               shift = (-3 * fac + 1) * 0.5 * top(i_dim) + &
+                       (     fac + 1) * 0.5 * bot(i_dim)
+            endif
+
+            trafo(nsearchimages)%fac(i_dim)   = fac
+            trafo(nsearchimages)%shift(i_dim) = shift
+
+         enddo
+         
+      endif ! boxexists
+      
+      
+   enddo
+   
+   if (nsearchimages == 0) then
+   trafo(1)%fac   = 1
+   trafo(1)%shift = 0
+   nsearchimages = 1
+   endif
+   allocate(box%trafo(nsearchimages))
+   box%trafo(1:nsearchimages) = trafo(1:nsearchimages)
+
+ end subroutine box_set_searchimages
 
 
 

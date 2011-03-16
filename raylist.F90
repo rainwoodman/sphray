@@ -26,8 +26,6 @@ implicit none
  real, parameter :: half = 0.5d0
 
  integer,parameter :: MAX_RAYLIST_LENGTH = 1000000  !< default maximum
- integer,parameter :: ndim = 3                      !< number of dimensions
- integer,parameter :: nimages = 3**ndim             !< number of search images
 
 
 !> holds a particle index, an impact parameter, and a distance along a ray
@@ -49,9 +47,6 @@ implicit none
       integer :: lastnnb          !< intersection where we stopped
       integer(i8b) :: searchcell  !< index of cell being searched
       logical :: reuseable        !< is this ray reusable?
-      integer :: searchimage      !< which transformation of the particles?
-      integer :: nsearchimages    !< how many images to search
-      type(transformation_type) :: trafo(nimages)  !< transformations  
       type(intersection_type), allocatable :: intersections(:) !< ray/par 
    end type raylist_type
 
@@ -88,14 +83,8 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    raylist%maxnnb         = MAX_RAYLIST_LENGTH
    raylist%searchcell     = 1
    raylist%reuseable      = .false.
-   raylist%searchimage    = 1
-   raylist%nsearchimages  = 1
-   raylist%trafo(1)%fac   = 1
-   raylist%trafo(1)%shift = zero 
 
    allocate(raylist%intersections(raylist%maxnnb))
-
-   call setsearchimages(psys,raylist)
 
  end subroutine prepare_raysearch
 
@@ -110,10 +99,9 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    type(raylist_type) raylist          !< raylist
    type(src_ray_type) :: curay !< transformed ray
    integer(i4b) :: searchimage
-   if(raylist%nsearchimages == 0) call raylistError('raylist init.')
-
-   do searchimage = 1, raylist%nsearchimages
-      call src_ray_transform( active_rays(rayn), curay, raylist%trafo(searchimage) )
+   
+   do searchimage = lbound(psys%box%trafo, 1), ubound(psys%box%trafo, 1)
+      call src_ray_transform( active_rays(rayn), curay, psys%box%trafo(searchimage) )
       call raysearch(psys, searchtree, curay, rayn, raylist)
 ! this is strange, if raylist%searchcell != 0 something must be wrong,
 ! shall we print an error instead?
@@ -202,8 +190,6 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
  subroutine kill_raylist(raylist)
 
    type(raylist_type) :: raylist !< the raylist to kill
-   real(r8b) :: start(ndim)
-   real(r8b) :: dir(ndim) 
   
      raylist%nnb=0
      raylist%maxnnb=MAX_RAYLIST_LENGTH
@@ -212,89 +198,6 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
  end subroutine kill_raylist
 
-
-!> create the transformations for the searchimages
-!-------------------------------------------------
- subroutine setsearchimages(psys,raylist)
-
-   type(particle_system_type), intent(in) :: psys
-   type(raylist_type) :: raylist
-   
-   real :: top(ndim)        !< top box corner
-   real :: bot(ndim)        !< bottom box corner
-   integer :: bbound(ndim)  !< bottom BCs
-   integer :: tbound(ndim)  !< top BCs
-   integer :: nsearchimages !< number of valid periodic images
-
-   integer :: i_image       !< loop over images counter
-   integer :: i_dim         !< loop over dimensions counter
-  
-   integer :: vec(ndim)     !< vector from origin of base box to origin of image box
-   integer :: fac           !< tmp storage transformation factor for each dimension
-   real    :: shift         !< tmp storage transformation shift for each dimension
-
-   integer :: l
-   real :: lx(ndim),hx(ndim)
-   logical :: boxexists
-
-   top    = psys%box%tops
-   bot    = psys%box%bots
-   bbound = psys%box%bbound
-   tbound = psys%box%tbound
-   
-   nsearchimages = 0
-   
-   do i_image = 0, nimages - 1
-      l = i_image
-      
-      do i_dim = 1, ndim
-         vec(i_dim)=mod(l,3)-1 
-         l=l/3
-      enddo
-      
-      boxexists = .true.
-      
-      do i_dim = 1, ndim
-         lx(i_dim) = bot(i_dim) + vec(i_dim) * ( top(i_dim) - bot(i_dim) )
-         hx(i_dim) = top(i_dim) + vec(i_dim) * ( top(i_dim) - bot(i_dim) )
-         if( vec(i_dim) == -1 .and. bbound(i_dim) == 0) boxexists = .false.  
-         if( vec(i_dim) ==  1 .and. tbound(i_dim) == 0) boxexists = .false.  
-      enddo
-            
-      if (boxexists) then
-         nsearchimages = nsearchimages + 1
-         
-         do i_dim = 1, ndim
-            
-            fac   = 1
-            shift = zero
-            
-            if( vec(i_dim) == -1 ) then
-               fac   = bbound(i_dim)
-               shift = (-3 * fac + 1) * half * bot(i_dim) + &
-                       (     fac + 1) * half * top(i_dim)
-            endif
-            
-            if( vec(i_dim) == 1 ) then
-               fac   = tbound(i_dim)
-               shift = (-3 * fac + 1) * half * top(i_dim) + &
-                       (     fac + 1) * half * bot(i_dim)
-            endif
-
-            raylist%trafo(nsearchimages)%fac(i_dim)   = fac
-            raylist%trafo(nsearchimages)%shift(i_dim) = shift
-
-         enddo
-         
-      endif ! boxexists
-      
-      
-   enddo
-   
-   raylist%nsearchimages = nsearchimages
-
-
- end subroutine setsearchimages
 
 
 !> error handling

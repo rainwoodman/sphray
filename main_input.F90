@@ -188,7 +188,7 @@ subroutine readin_snapshot()
   psys%box%tbound = CV%BndryCond
   psys%box%bbound = CV%BndryCond
 
-
+  call box_set_searchimages(psys%box)
   ! read in the source data
   !============================================
   call read_src_snapshot()
