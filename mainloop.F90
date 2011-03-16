@@ -166,19 +166,19 @@ contains
          NTRD = OMP_GET_NUM_THREADS()
          PRINT *, 'Hello from thread', TID, NTRD
          !$OMP SINGLE
-         allocate(raylists(NTRD))
+         allocate(raylists(0:NTRD-1))
          !$OMP END SINGLE
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do raym = 1, CV%IonFracOutRays
             ! begin ray tracing and updating 
-            call prepare_raysearch(psys, raylists(TID+1), rayn=raym)
-            call trace_ray(raylists(TID+1), psys, tree) 
-            call update_raylist(raylists(TID+1),psys%par,psys%box)
+            call prepare_raysearch(psys, raylists(TID), rayn=raym)
+            call trace_ray(raylists(TID), psys, tree) 
+            call update_raylist(raylists(TID),psys%par,psys%box)
             !$OMP ATOMIC
-            GV%ParticleCrossingsTraced = GV%ParticleCrossingsTraced + raylists(TID+1)%lastnnb
+            GV%ParticleCrossingsTraced = GV%ParticleCrossingsTraced + raylists(TID)%lastnnb
             ! done ray tracing and updating
             ! free up the memory from the globalraylist.
-            call kill_raylist(raylists(TID+1))
+            call kill_raylist(raylists(TID))
           enddo
          !$OMP END DO
          !$OMP SINGLE
