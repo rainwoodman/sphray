@@ -172,7 +172,7 @@ contains
           do raym = 1, CV%IonFracOutRays
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylists(TID), rayn=raym)
-            call trace_ray(raylists(TID), psys, tree) 
+            call trace_ray(raym, raylists(TID), psys, tree) 
             call update_raylist(raylists(TID),psys%par,psys%box)
             !$OMP ATOMIC
             GV%ParticleCrossingsTraced = GV%ParticleCrossingsTraced + raylists(TID)%lastnnb

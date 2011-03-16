@@ -79,6 +79,7 @@ subroutine update_raylist(raylist, pars, box)
   type(intersection_type) :: intersection
   type(src_ray_type) :: ray
   integer(i8b) :: impact  
+  integer(i4b) :: rayn
   integer(i8b) :: scalls  ! number of calls to solver
   logical :: photo
   logical :: He
@@ -95,13 +96,13 @@ subroutine update_raylist(raylist, pars, box)
   
   ! loop through the ray particle intersections
   !-------------------------------------------------------
-  ray = active_rays(raylist%rayn)
   impact_loop: do impact = 1,raylist%nnb
 
      GV%ParticleCrossings = GV%ParticleCrossings + 1     
      intersection = raylist%intersections(impact)
      par = pars(intersection%pindx)
-
+     rayn = intersection%rayn
+     ray = active_rays(rayn)
      
 
      ! check we dont have double intersections when we shouldn't
@@ -219,7 +220,7 @@ subroutine update_raylist(raylist, pars, box)
         end if
      end if
 
-     active_rays(raylist%rayn) = ray
+     active_rays(rayn) = ray
      
      ! if vacuum BCs and exiting box
      !-------------------------------

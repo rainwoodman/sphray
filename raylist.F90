@@ -51,7 +51,6 @@ implicit none
       logical :: reuseable        !< is this ray reusable?
       integer :: searchimage      !< which transformation of the particles?
       integer :: nsearchimages    !< how many images to search
-      integer(i4b) :: rayn         !< ray index within active_rays
       type(transformation_type) :: trafo(nimages)  !< transformations  
       type(intersection_type), allocatable :: intersections(:) !< ray/par 
    end type raylist_type
@@ -97,8 +96,6 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
    allocate(raylist%intersections(raylist%maxnnb))
 
-   raylist%rayn = rayn
-
    call setsearchimages(psys,raylist)
 
  end subroutine prepare_raysearch
@@ -106,15 +103,16 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
 !> check all of the search images for intersection
 !---------------------------------------------------
- subroutine fullsearch(psys, searchtree, raylist)
+ subroutine fullsearch(psys, searchtree, rayn, raylist)
 
+   integer(i4b), intent(in) :: rayn !< active_rays(rayn) is to be traced
    type(particle_system_type) :: psys  !< particle system
    type(oct_tree_type) :: searchtree   !< oct-tree to search
    type(raylist_type) raylist          !< raylist
 
    if(raylist%searchimage == 0) call raylistError('raylist init.')
    do while (raylist%searchimage <= raylist%nsearchimages)   
-      call raysearch(psys, searchtree, raylist)
+      call raysearch(psys, searchtree, rayn, raylist)
       if (raylist%searchcell /= 0) return 
       raylist%searchimage = raylist%searchimage + 1
       raylist%searchcell = 1
@@ -126,8 +124,9 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
 !> checks a single search image for intersection
 !-----------------------------------------------
- subroutine raysearch(psys, searchtree, raylist)
+ subroutine raysearch(psys, searchtree, rayn, raylist)
 
+   integer(i4b), intent(in) :: rayn    !< activerays[rayn] will be traced
    type(particle_system_type), intent(in) :: psys         !< particle system
    type(oct_tree_type), intent(in), target :: searchtree  !< oct-tree to search
    type(raylist_type) :: raylist                          !< raylist
@@ -146,7 +145,7 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    si = raylist%searchimage
 
    ! curay%start = ray%start * fac + shift
-   call src_ray_transform( active_rays(raylist%rayn), curay, raylist%trafo(si) )
+   call src_ray_transform( active_rays(rayn), curay, raylist%trafo(si) )
    next = raylist%searchcell
 
    do while (next /= 0)
@@ -176,7 +175,7 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
             par_hit = src_ray_part_intersection( curay, psys%par(orderindx) ) 
             if (par_hit) then
                raylist%nnb = raylist%nnb + 1
-               call set_intersection(raylist%intersections(raylist%nnb), curay, raylist%rayn, orderindx)
+               call set_intersection(raylist%intersections(raylist%nnb), curay, rayn, orderindx)
             endif
          enddo
 
@@ -346,14 +345,15 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
 !> given a ray creates a raylist with intersections
 !------------------------------------------------------
- subroutine trace_ray(raylist, psys, searchtree) 
+ subroutine trace_ray(rayn, raylist, psys, searchtree) 
+   integer(i4b), intent(in) :: rayn   !< the ray number to be traced (active_rays[rayn])
    type(raylist_type), intent(inout) :: raylist    !< the returned raylist
    type(particle_system_type), intent(in) :: psys  !< the particle system
    type(oct_tree_type), intent(in) :: searchtree   !< the oct-tree to search
 
    logical :: wantsort
 
-   call fullsearch(psys, searchtree, raylist)
+   call fullsearch(psys, searchtree, rayn, raylist)
 
    call sort3_raylist(raylist)
 
