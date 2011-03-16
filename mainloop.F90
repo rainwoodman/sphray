@@ -54,8 +54,8 @@ contains
     !-----------------
     
     integer(i8b) :: snapn !< snapshot counter
-    integer(i8b) :: rayn  !< ray counter
-    integer(i4b) :: raym  !< ray counter, inner loop
+    integer(i8b) :: raybatch !< ray counter, at integer batch startings
+    integer(i4b) :: rayn  !< ray counter, inner loop
     integer(i8b) :: srcn  !< source counter
     integer(i8b) :: rayoops !< count of lasthit > ray%itime
     
@@ -117,10 +117,10 @@ contains
        allocate(active_rays(CV%IonFracOutRays))
        GV%ParticleCrossingsTraced = 0
 
-       src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays, CV%IonFracOutRays
+       src_rays: do raybatch = one, PLAN%snap(snapn)%SrcRays, CV%IonFracOutRays
 
           
-          do raym = 1, CV%IonFracOutRays
+          do rayn = 1, CV%IonFracOutRays
             ! begin creation of a ray
             GV%TotalSourceRaysCast = GV%TotalSourceRaysCast + 1                
             GV%itime = GV%itime + 1
@@ -137,7 +137,7 @@ contains
             enddo
                     
             !  create a source ray and calc the impacts
-            call src_ray_make( active_rays(raym), psys%src(srcn), GV%itime, GV%dt_s, GV%Lunit, psys%box )
+            call src_ray_make( active_rays(rayn), psys%src(srcn), GV%itime, GV%dt_s, GV%Lunit, psys%box )
 
             ! begin stat
             if (CV%raystats) then
@@ -145,8 +145,8 @@ contains
                raystatcnt = raystatcnt + 1
              
                raystats(raystatcnt)%srcn  = srcn
-               raystats(raystatcnt)%start = active_rays(raym)%start  
-               raystats(raystatcnt)%ryd   = active_rays(raym)%freq
+               raystats(raystatcnt)%start = active_rays(rayn)%start  
+               raystats(raystatcnt)%ryd   = active_rays(rayn)%freq
              
                if (raystatcnt == raystatbuffsize) then
                   write(GV%raystatlun) raystats
@@ -157,11 +157,11 @@ contains
             end if
           ! done stat 
           
-            GV%TotalPhotonsCast = GV%TotalPhotonsCast + active_rays(raym)%pini
+            GV%TotalPhotonsCast = GV%TotalPhotonsCast + active_rays(rayn)%pini
           ! done creation of a ray
           enddo
 
-         !$OMP PARALLEL FIRSTPRIVATE(raym, rayoops, TID, NTRD)
+         !$OMP PARALLEL FIRSTPRIVATE(rayn, rayoops, TID, NTRD)
          TID = OMP_GET_THREAD_NUM()
          NTRD = OMP_GET_NUM_THREADS()
          PRINT *, 'Hello from thread', TID, NTRD
@@ -169,10 +169,10 @@ contains
          allocate(raylists(0:NTRD-1))
          !$OMP END SINGLE
          !$OMP DO SCHEDULE(DYNAMIC, 1)
-          do raym = 1, CV%IonFracOutRays
+          do rayn = 1, CV%IonFracOutRays
             ! begin ray tracing and updating 
-            call prepare_raysearch(psys, raylists(TID), rayn=raym)
-            call trace_ray(raym, raylists(TID), psys, tree) 
+            call prepare_raysearch(psys, raylists(TID), rayn)
+            call trace_ray(rayn, raylists(TID), psys, tree) 
             call update_raylist(raylists(TID),psys%par,psys%box)
             !$OMP ATOMIC
             GV%ParticleCrossingsTraced = GV%ParticleCrossingsTraced + raylists(TID)%lastnnb
