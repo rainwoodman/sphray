@@ -79,11 +79,10 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
  
 !> initialize raylist variables and set search images
 !------------------------------------------------------
- subroutine prepare_raysearch(psys, raylist, rayn)
+ subroutine prepare_raysearch(psys, raylist)
 
    type(particle_system_type) psys !< particle system
    type(raylist_type) raylist      !< ray list
-   integer(i4b) :: rayn  !< the ray index
   
    raylist%nnb            = 0
    raylist%maxnnb         = MAX_RAYLIST_LENGTH
