@@ -46,7 +46,6 @@ implicit none
       integer :: maxnnb           !< maximum number of intersections
       integer :: lastnnb          !< intersection where we stopped
       integer(i8b) :: searchcell  !< index of cell being searched
-      logical :: reuseable        !< is this ray reusable?
       type(intersection_type), allocatable :: intersections(:) !< ray/par 
    end type raylist_type
 
@@ -82,7 +81,6 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    raylist%nnb            = 0
    raylist%maxnnb         = MAX_RAYLIST_LENGTH
    raylist%searchcell     = 1
-   raylist%reuseable      = .false.
 
    allocate(raylist%intersections(raylist%maxnnb))
 
@@ -152,7 +150,6 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
          par_in_cell = tree%cell(next)%start - tree%cell(this)%start
          if (raylist%nnb + par_in_cell > raylist%maxnnb) then             
             write(*,*) ' *** reached max intersections *** '
-            raylist%reuseable  = .false.
             raylist%searchcell = this
             return            
          endif
