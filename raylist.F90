@@ -109,12 +109,16 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    type(particle_system_type) :: psys  !< particle system
    type(oct_tree_type) :: searchtree   !< oct-tree to search
    type(raylist_type) raylist          !< raylist
+   type(src_ray_type) :: curay !< transformed ray
+   integer(i4b) :: searchimage
+   if(raylist%nsearchimages == 0) call raylistError('raylist init.')
 
-   if(raylist%searchimage == 0) call raylistError('raylist init.')
-   do while (raylist%searchimage <= raylist%nsearchimages)   
-      call raysearch(psys, searchtree, rayn, raylist)
+   do searchimage = 1, raylist%nsearchimages
+      call src_ray_transform( active_rays(rayn), curay, raylist%trafo(searchimage) )
+      call raysearch(psys, searchtree, curay, rayn, raylist)
+! this is strange, if raylist%searchcell != 0 something must be wrong,
+! shall we print an error instead?
       if (raylist%searchcell /= 0) return 
-      raylist%searchimage = raylist%searchimage + 1
       raylist%searchcell = 1
    enddo
    raylist%searchcell = 0
@@ -124,8 +128,9 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
 !> checks a single search image for intersection
 !-----------------------------------------------
- subroutine raysearch(psys, searchtree, rayn, raylist)
+ subroutine raysearch(psys, searchtree, curay, rayn, raylist)
 
+   type(src_ray_type), intent(in) :: curay !< transformed ray
    integer(i4b), intent(in) :: rayn    !< activerays[rayn] will be traced
    type(particle_system_type), intent(in) :: psys         !< particle system
    type(oct_tree_type), intent(in), target :: searchtree  !< oct-tree to search
@@ -133,19 +138,16 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
 
    type(oct_tree_type), pointer :: tree      !< pointer to tree
-   type(src_ray_type) :: curay               !< transformed ray
    integer(i8b) :: this, daughter, next      !< octree indices
    integer(i8b) :: par_in_cell               !< number of particles in current search cell
    logical :: par_hit                        !< ray / particle intersection test
    logical :: cell_hit                       !< ray / cell intersection test
    logical :: long                           !< past max distance? 
-   integer(i8b) :: i, si, orderindx
+   integer(i8b) :: i, orderindx
 
    tree => searchtree
-   si = raylist%searchimage
 
    ! curay%start = ray%start * fac + shift
-   call src_ray_transform( active_rays(rayn), curay, raylist%trafo(si) )
    next = raylist%searchcell
 
    do while (next /= 0)
