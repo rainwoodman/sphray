@@ -95,7 +95,6 @@ subroutine update_raylist(raylist, pars, box)
   
   ! loop through the ray particle intersections
   !-------------------------------------------------------
-  raylist%rayoops = 0
   ray = active_rays(raylist%rayn)
   impact_loop: do impact = 1,raylist%nnb
 
@@ -125,8 +124,7 @@ subroutine update_raylist(raylist, pars, box)
         end if
      end if
      if (ray%emit_time < par%lasthit) then
-         raylist%rayoops = raylist%rayoops + 1
-         cycle
+         stop "ray emit_time < par%lasthit, causaulity broken, stopping"
      endif
      call initialize_ionpar(ipar, intersection, He)
 

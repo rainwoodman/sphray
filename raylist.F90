@@ -47,7 +47,6 @@ implicit none
       integer :: nnb              !< number of intersections
       integer :: maxnnb           !< maximum number of intersections
       integer :: lastnnb          !< intersection where we stopped
-      integer :: rayoops          !< counts of ray:itime < lasthit
       integer(i8b) :: searchcell  !< index of cell being searched
       logical :: reuseable        !< is this ray reusable?
       integer :: searchimage      !< which transformation of the particles?
@@ -55,7 +54,6 @@ implicit none
       integer(i4b) :: rayn         !< ray index within active_rays
       type(transformation_type) :: trafo(nimages)  !< transformations  
       type(intersection_type), allocatable :: intersections(:) !< ray/par 
-      logical :: allocated        ! is the intesection array already allocated? stupid fortran can't test this!
    end type raylist_type
 
 

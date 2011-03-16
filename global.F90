@@ -159,10 +159,9 @@ type global_variables_type
    
    real(r8b) :: PeakUpdates            !< max updates for a single particle
    real(r8b) :: AverageUpdatesPerPar   !< average number of updates per particle
-   real(r8b) :: ParticleCrossings      !< number of ray / particle intersections
+   real(r8b) :: ParticleCrossings      !< number of ray / particle intersections, updated
    real(r8b) :: TotalDerivativeCalls   !< times the solver being used has run
-   integer(i8b) :: rayoops             !< number of times a ray hits a par hit by a future ray
-   integer(i8b) :: totalhits !< a total number of hits
+   integer(i8b) :: ParticleCrossingsTraced !< number of ray / particle intersections, traced
 end type global_variables_type
  
 

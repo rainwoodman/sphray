@@ -679,7 +679,7 @@ contains
         endif
      end do
      write(*,161) "Fraction Not Hit = ", real(nothit) / size(psys%par)
-     write(*,*) "Oops,hits  = ", GV%rayoops, GV%totalhits
+     write(*,*) "Oops,hits  = ", 0, GV%ParticleCrossingsTraced
 
 
      write(*,*) 

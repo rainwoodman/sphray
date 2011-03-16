@@ -115,8 +115,7 @@ contains
        ! begin ray tracing 
        !------------------------- 
        allocate(active_rays(CV%IonFracOutRays))
-       GV%rayoops = 0
-       GV%totalhits = 0
+       GV%ParticleCrossingsTraced = 0
 
        src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays, CV%IonFracOutRays
 
@@ -176,9 +175,7 @@ contains
             call trace_ray(raylists(TID+1), psys, tree) 
             call update_raylist(raylists(TID+1),psys%par,psys%box)
             !$OMP ATOMIC
-            GV%rayoops = GV%rayoops + raylists(TID+1)%rayoops
-            !$OMP ATOMIC
-            GV%totalhits = GV%totalhits + raylists(TID+1)%lastnnb
+            GV%ParticleCrossingsTraced = GV%ParticleCrossingsTraced + raylists(TID+1)%lastnnb
             ! done ray tracing and updating
             ! free up the memory from the globalraylist.
             call kill_raylist(raylists(TID+1))
