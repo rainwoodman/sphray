@@ -1,5 +1,5 @@
 FC= ifort
-IFORTFLAGS= -openmp -ftz -fpe0 -g -traceback -fpp 
+IFORTFLAGS= -g -traceback -openmp -O0
 FFLAGS= $(IFORTFLAGS) -C
 
 ISLIB= -L

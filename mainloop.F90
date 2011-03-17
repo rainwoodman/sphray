@@ -22,6 +22,7 @@ module mainloop_mod
   use global_mod, only: psys
   use global_mod, only: tree
   use global_mod, only: GV
+  use global_mod, only: AV
   use global_mod, only: PLAN
   use global_mod, only: active_rays
   use config_mod, only: CV
@@ -115,14 +116,14 @@ contains
        ! begin ray tracing 
        !------------------------- 
        allocate(active_rays(CV%IonFracOutRays))
-       GV%ParticleCrossingsTraced = 0
+       call ion_frac_out(psys, tree )
 
        src_rays: do raybatch = one, PLAN%snap(snapn)%SrcRays, CV%IonFracOutRays
 
           
           do rayn = 1, CV%IonFracOutRays
             ! begin creation of a ray
-            GV%TotalSourceRaysCast = GV%TotalSourceRaysCast + 1                
+            AV%TotalSourceRaysCast = AV%TotalSourceRaysCast + 1                
             GV%itime = GV%itime + 1
           
             !  select a source randomly (weighted by their luminosity)
@@ -157,7 +158,7 @@ contains
             end if
           ! done stat 
           
-            GV%TotalPhotonsCast = GV%TotalPhotonsCast + active_rays(rayn)%pini
+            AV%TotalPhotonsCast = AV%TotalPhotonsCast + active_rays(rayn)%pini
           ! done creation of a ray
           enddo
 
@@ -173,9 +174,7 @@ contains
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylists(TID))
             call trace_ray(rayn, raylists(TID), psys, tree) 
-            call update_raylist(raylists(TID),psys%par,psys%box, num_updates)
-            !$OMP ATOMIC
-            GV%ParticleCrossingsTraced = GV%ParticleCrossingsTraced + num_updates
+            call update_raylist(raylists(TID),psys%par,psys%box)
             ! done ray tracing and updating
             ! free up the memory from the globalraylist.
             call kill_raylist(raylists(TID))
@@ -187,7 +186,7 @@ contains
          !$OMP END PARALLEL
           ! update some really unused global variables only before output
           ! yfeng1
-          GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / (GV%itime * GV%dt_s)
+          AV%IonizingPhotonsPerSec = AV%TotalPhotonsCast / (GV%itime * GV%dt_s)
 
           !        output routines
           !------------------------
@@ -232,7 +231,7 @@ contains
           ! output, do a full output.
           if ( snapn == CV%EndSnapNum ) then
              if ( GV%OutputIndx <= GV%NumTotOuts ) then
-                if ( GV%TotalSourceRaysCast==PLAN%snap(snapn)%SrcRays ) then
+                if ( AV%TotalSourceRaysCast==PLAN%snap(snapn)%SrcRays ) then
                    write(*,*) "doing an output on the last ray"
                    call output_total_snap(psys)
                 end if

@@ -49,6 +49,21 @@ type(run_planning_type) :: PLAN           !< run plan
 type(gadget_sphray_header_type), allocatable :: saved_gheads(:,:) !< all headers (nsnaps,nfiles)
 
 
+type accounting_variables_type
+   integer(i8b) :: TotalSourceRaysCast    !< total rays traced from user def. sources
+   integer(i8b) :: TotalDiffuseRaysCast   !< total recombination rays traced
+   real(r8b) :: IonizingPhotonsPerSec  !< ionizing photons emitted per second
+   real(r8b) :: TotalPhotonsCast       !< total number of photons emitted
+   real(r8b) :: TotalPhotonsAbsorbed   !< total number of photons absorbed
+   real(r8b) :: PhotonsLeavingBox      !< total photons leaving the box
+   real(r8b) :: TotalIonizations       !< total number of photoionizations
+   real(r8b) :: TotalRecombinations    !< total number of recombinations
+   integer(i8b) :: PeakUpdates            !< max updates for a single particle
+   integer(i8b) :: ParticlesCrossed        !< total number of updated particles(with dup)
+   integer(i8b) :: ParticleCrossings      !< number of ray / particle intersections, updated
+   integer(i8b) :: TotalDerivativeCalls   !< times the solver being used has run
+end type accounting_variables_type
+
  
 !> global variables type. 
 !=========================
@@ -148,27 +163,26 @@ type global_variables_type
    real(r8b) :: mwionfrac          !< mass weighted ionization fraction
    real(r8b) :: vwionfrac          !< volume weighted ionization fraction
 
-   real(r8b) :: TotalSourceRaysCast    !< total rays traced from user def. sources
-   real(r8b) :: TotalDiffuseRaysCast   !< total recombination rays traced
-   real(r8b) :: IonizingPhotonsPerSec  !< ionizing photons emitted per second
-   real(r8b) :: TotalPhotonsCast       !< total number of photons emitted
-   real(r8b) :: TotalPhotonsAbsorbed   !< total number of photons absorbed
-   real(r8b) :: PhotonsLeavingBox      !< total photons leaving the box
-   real(r8b) :: TotalIonizations       !< total number of photoionizations
-   real(r8b) :: TotalRecombinations    !< total number of recombinations
-   
-   real(r8b) :: PeakUpdates            !< max updates for a single particle
-   real(r8b) :: AverageUpdatesPerPar   !< average number of updates per particle
-   real(r8b) :: ParticleCrossings      !< number of ray / particle intersections, updated
-   real(r8b) :: TotalDerivativeCalls   !< times the solver being used has run
-   integer(i8b) :: ParticleCrossingsTraced !< number of ray / particle intersections, traced
 end type global_variables_type
  
 
 type(global_variables_type) :: GV           !< global variables          
+type(accounting_variables_type) :: AV       !< global accounting variables
 
-
-
-
+contains
+subroutine reduce_accounting_variables(ja)
+  type(accounting_variables_type), intent(in)  :: ja
+  AV%TotalSourceRaysCast = AV%TotalSourceRaysCast + ja%TotalSourceRaysCast
+  AV%TotalDiffuseRaysCast = AV%TotalDiffuseRaysCast + ja%TotalDiffuseRaysCast
+  AV%IonizingPhotonsPerSec = AV%IonizingPhotonsPerSec + ja%IonizingPhotonsPerSec
+  AV%TotalPhotonsCast = AV%TotalPhotonsCast + ja%TotalPhotonsCast
+  AV%TotalPhotonsAbsorbed = AV%TotalPhotonsAbsorbed + ja%TotalPhotonsAbsorbed
+  AV%PhotonsLeavingBox = AV%PhotonsLeavingBox + ja%PhotonsLeavingBox
+  AV%TotalIonizations = AV%TotalIonizations + ja%TotalIonizations
+  AV%TotalRecombinations = AV%TotalRecombinations + ja%TotalRecombinations
+  AV%PeakUpdates = max(AV%PeakUpdates , ja%PeakUpdates)
+  AV%ParticleCrossings = AV%ParticleCrossings + ja%ParticleCrossings
+  AV%TotalDerivativeCalls = AV%TotalDerivativeCalls + ja%TotalDerivativeCalls
+end subroutine reduce_accounting_variables
 
 end module global_mod

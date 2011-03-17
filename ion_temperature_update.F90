@@ -21,6 +21,7 @@ use bdf_mod, only: bdfint
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: GV, saved_gheads, rtable
 use global_mod, only: active_rays
+use global_mod, only: AV
 
 use config_mod, only: CV
 implicit none
@@ -68,12 +69,11 @@ end subroutine set_bools
 
 !> updates the particles intersected by a ray 
 !!-----------------------------------------------------------------
-subroutine update_raylist(raylist, pars, box, num_updates)
+subroutine update_raylist(raylist, pars, box)
 
   type(raylist_type), intent(inout) :: raylist !< ray/particle intersections
   type(particle_type), intent(inout) :: pars(:)  !< particle system
   type(box_type), intent(in) :: box  !< particle system
-  integer(i8b), intent(out) :: num_updates
 
   type(particle_type) :: par
   type(ionpart_type) :: ipar
@@ -99,7 +99,6 @@ subroutine update_raylist(raylist, pars, box, num_updates)
   !-------------------------------------------------------
   impact_loop: do impact = 1,raylist%nnb
 
-     GV%ParticleCrossings = GV%ParticleCrossings + 1     
      intersection = raylist%intersections(impact)
      par = pars(intersection%pindx)
      rayn = intersection%rayn
@@ -112,8 +111,7 @@ subroutine update_raylist(raylist, pars, box, num_updates)
         if (box%tbound(1)==1 .and. ray%emit_time == par%lasthit) then
            ! here we have periodic BCs and a particle has been hit
            ! twice by the same ray so we stop tracing 
-           GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + ray%pcnt
-           num_updates = impact-1
+           AV%PhotonsLeavingBox = AV%PhotonsLeavingBox + ray%pcnt
            exit
         else if (box%tbound(1)==0 .and. ray%emit_time == par%lasthit) then
            ! here we have transmissive BCs and a particle has been hit
@@ -128,6 +126,7 @@ subroutine update_raylist(raylist, pars, box, num_updates)
      if (ray%emit_time < par%lasthit) then
          stop "ray emit_time < par%lasthit, causaulity broken, stopping"
      endif
+     AV%ParticleCrossings = AV%ParticleCrossings + 1     
      call initialize_ionpar(ipar, intersection, He)
 
 
@@ -150,10 +149,8 @@ subroutine update_raylist(raylist, pars, box, num_updates)
      end if
      call check_x(ipar)
 
-     num_updates = impact
-
-     GV%TotalDerivativeCalls = GV%TotalDerivativeCalls + scalls
-     if (scalls .GT. GV%PeakUpdates) GV%PeakUpdates = scalls
+     AV%TotalDerivativeCalls = AV%TotalDerivativeCalls + scalls
+     if (scalls .GT. AV%PeakUpdates) AV%PeakUpdates = scalls
 
 
      !  put the updated particle data into the particle system
@@ -175,13 +172,13 @@ subroutine update_raylist(raylist, pars, box, num_updates)
 
      !  use the solution to set some global variables
      !=================================================
-     GV%TotalPhotonsAbsorbed = GV%TotalPhotonsAbsorbed + ipar%pdeps
-     GV%TotalIonizations     = GV%TotalIonizations + &
+     AV%TotalPhotonsAbsorbed = AV%TotalPhotonsAbsorbed + ipar%pdeps
+     AV%TotalIonizations     = AV%TotalIonizations + &
                                (ipar%xHII - ipar%xHII_in) * ipar%Hcnt
 #ifdef incHe
-     GV%TotalIonizations     = GV%TotalIonizations + &
+     AV%TotalIonizations     = AV%TotalIonizations + &
                                (ipar%xHeII - ipar%xHeII_in) * ipar%Hecnt     
-     GV%TotalIonizations     = GV%TotalIonizations + &
+     AV%TotalIonizations     = AV%TotalIonizations + &
                                (ipar%xHeIII - ipar%xHeIII_in) * ipar%Hecnt     
 #endif
 
@@ -227,7 +224,7 @@ subroutine update_raylist(raylist, pars, box, num_updates)
      !-------------------------------
      if(box%tbound(1)==0) then
         if(impact==raylist%nnb) then
-           GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + ray%pcnt
+           AV%PhotonsLeavingBox = AV%PhotonsLeavingBox + ray%pcnt
         end if
      end if
 

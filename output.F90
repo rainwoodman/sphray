@@ -15,6 +15,7 @@ use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use config_mod, only: CV
 use global_mod, only: PLAN, GV
+use global_mod, only: AV
 use global_mod, only: saved_gheads
 use config_mod, only: write_config_hdf5_lun
 
@@ -74,7 +75,7 @@ contains
     ghead%flag_metals   = saved_gheads(GV%CurSnapNum,fnum)%flag_metals
     ghead%flag_entr_ics = saved_gheads(GV%CurSnapNum,fnum)%flag_entr_ics
     
-    ghead%rays_traced = GV%TotalSourceRaysCast
+    ghead%rays_traced = AV%TotalSourceRaysCast
 
 #ifdef incHmf
     ghead%flag_Hmf = 1
@@ -566,8 +567,9 @@ contains
 
      100 format(A,T24,A,T44,A,T64,A)
      101 format(A,T44,A,T64,A)
+     104 format(T21,I12,T43,I12,T63,ES12.3)
      105 format(T21,ES12.3,T43,ES12.3,T63,ES12.3)
-     106 format(T43,ES12.3,T63,ES12.3)
+     106 format(T43,I12,T63,ES12.3)
      110 format(T21,I15,T43,I15,T63,ES11.5)
 
      write(*,100) "time:", "code units", "Myrs", "seconds"
@@ -603,33 +605,35 @@ contains
                           1.0d0-Nionfrac, 1.0d0-Mionfrac, 1.0d0-Vionfrac
 
      write(*,100) "rays cast:", "source", "diffuse", "diffuse/source"
-     write(*,105) GV%TotalSourceRaysCast, GV%TotalDiffuseRaysCast, &
-                  GV%TotalDiffuseRaysCast/GV%TotalSourceRaysCast 
+     if (AV%TotalSourceRaysCast == 0) then
+       write(*,104) AV%TotalSourceRaysCast, AV%TotalDiffuseRaysCast, &
+                  0.0
+     else
+       write(*,104) AV%TotalSourceRaysCast, AV%TotalDiffuseRaysCast, &
+                  real(AV%TotalDiffuseRaysCast)/AV%TotalSourceRaysCast 
+     endif
      write(*,*) 
      
-     if (GV%TotalPhotonsCast > 0.) then
+     if (AV%TotalPhotonsCast > 0.) then
         write(*,100) "photons:", "total cast", "per second", "% leaving box"
-        write(*,105) GV%TotalPhotonsCast, GV%IonizingPhotonsPerSec, &
-                     100.0 * GV%PhotonsLeavingBox / GV%TotalPhotonsCast
+        write(*,105) AV%TotalPhotonsCast, AV%IonizingPhotonsPerSec, &
+                     100.0 * AV%PhotonsLeavingBox / AV%TotalPhotonsCast
      else
         write(*,*) "zero luminosity source test"
      end if
      write(*,*)
 
-     if (GV%ParticleCrossings .GT. 0) then
-        CallsPerCross = GV%TotalDerivativeCalls / GV%ParticleCrossings
+     if (AV%ParticleCrossings .GT. 0) then
+        CallsPerCross = float(AV%TotalDerivativeCalls) / AV%ParticleCrossings
      else
         CallsPerCross = 0.0
      end if
      write(*,101) "solver(since last screen output):", &
                   "par crossings", "evals/crossings"
-     write(*,106) GV%ParticleCrossings, CallsPerCross
-     GV%TotalDerivativeCalls = 0.0
-     GV%ParticleCrossings = 0.0
-
+     write(*,106) AV%ParticleCrossings, CallsPerCross
                   
      write(*,*)
-     write(*,*) "Peak Updates = ", GV%PeakUpdates
+     write(*,*) "Peak Updates = ", AV%PeakUpdates
      write(*,*) 
 
 
@@ -679,10 +683,14 @@ contains
         endif
      end do
      write(*,161) "Fraction Not Hit = ", real(nothit) / size(psys%par)
-     write(*,*) "Oops,hits  = ", 0, GV%ParticleCrossingsTraced
 
 
      write(*,*) 
+
+  ! reset some counters
+     AV%TotalDerivativeCalls = 0
+     AV%ParticleCrossings = 0
+
 
   end subroutine ion_frac_out
 

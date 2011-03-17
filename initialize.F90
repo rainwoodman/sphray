@@ -17,6 +17,7 @@ use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use main_input_mod, only: get_planning_data
 use config_mod, only: CV
 use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
+use global_mod, only: AV
 use particle_system_mod, only: return_bytes_per_particle
 use particle_system_mod, only: return_bytes_per_source
 implicit none
@@ -408,19 +409,19 @@ subroutine initialize_global_variables()
   GV%time_elapsed_s    = zero
   GV%time_elapsed_myr  = zero
       
-  GV%TotalSourceRaysCast = zero
-  GV%TotalDiffuseRaysCast = zero
-  GV%IonizingPhotonsPerSec = zero
-  GV%TotalPhotonsCast = zero
-  GV%TotalPhotonsAbsorbed = zero
-  GV%PhotonsLeavingBox = zero
-  GV%TotalIonizations = zero
-  GV%TotalRecombinations = zero
+  AV%TotalSourceRaysCast = zero
+  AV%TotalDiffuseRaysCast = zero
+  AV%IonizingPhotonsPerSec = zero
+  AV%TotalPhotonsCast = zero
+  AV%TotalPhotonsAbsorbed = zero
+  AV%PhotonsLeavingBox = zero
+  AV%TotalIonizations = zero
+  AV%TotalRecombinations = zero
   
-  GV%PeakUpdates = zero
-  GV%AverageUpdatesPerPar = zero
-  GV%ParticleCrossings = zero
-  GV%TotalDerivativeCalls = zero
+  AV%PeakUpdates = zero
+  AV%ParticleCrossings = zero
+  AV%ParticlesCrossed = zero
+  AV%TotalDerivativeCalls = zero
   
 
 
