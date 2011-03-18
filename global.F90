@@ -184,5 +184,20 @@ subroutine reduce_accounting_variables(ja)
   AV%ParticleCrossings = AV%ParticleCrossings + ja%ParticleCrossings
   AV%TotalDerivativeCalls = AV%TotalDerivativeCalls + ja%TotalDerivativeCalls
 end subroutine reduce_accounting_variables
+subroutine clear_accounting_variables(ja)
+  type(accounting_variables_type), intent(inout)  :: ja
+  ja%TotalSourceRaysCast = 0
+  ja%TotalDiffuseRaysCast = 0
+  ja%IonizingPhotonsPerSec = 0
+  ja%TotalPhotonsCast = 0
+  ja%TotalPhotonsAbsorbed = 0
+  ja%PhotonsLeavingBox = 0
+  ja%TotalIonizations = 0
+  ja%TotalRecombinations = 0
+  ja%PeakUpdates = 0
+  ja%ParticleCrossings = 0
+  ja%TotalDerivativeCalls = 0
+end subroutine clear_accounting_variables
+
 
 end module global_mod
