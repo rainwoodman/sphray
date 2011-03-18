@@ -43,7 +43,6 @@ implicit none
 !--------------------------------------- 
    type raylist_type
       integer :: nnb              !< number of intersections
-      integer :: maxnnb           !< maximum number of intersections
       type(intersection_type), allocatable :: intersections(:) !< ray/par 
    end type raylist_type
 
@@ -77,9 +76,8 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    type(raylist_type) raylist      !< ray list
   
    raylist%nnb            = 0
-   raylist%maxnnb         = MAX_RAYLIST_LENGTH
 
-   allocate(raylist%intersections(raylist%maxnnb))
+   allocate(raylist%intersections(MAX_RAYLIST_LENGTH))
 
  end subroutine prepare_raysearch
 
@@ -146,7 +144,7 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
          ! return if we go over max intersections
          !--------------------------------------------
          par_in_cell = tree%cell(next)%start - tree%cell(this)%start
-         if (raylist%nnb + par_in_cell > raylist%maxnnb) then             
+         if (raylist%nnb + par_in_cell > size(raylist%intersections, 1)) then             
             write(*,*) ' *** reached max intersections *** '
             searchcell = this
             return            
@@ -187,7 +185,6 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    type(raylist_type) :: raylist !< the raylist to kill
   
      raylist%nnb=0
-     raylist%maxnnb=MAX_RAYLIST_LENGTH
      deallocate(raylist%intersections)
 
  end subroutine kill_raylist
