@@ -44,7 +44,6 @@ implicit none
    type raylist_type
       integer :: nnb              !< number of intersections
       integer :: maxnnb           !< maximum number of intersections
-      integer(i8b) :: searchcell  !< index of cell being searched
       type(intersection_type), allocatable :: intersections(:) !< ray/par 
    end type raylist_type
 
@@ -79,7 +78,6 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
   
    raylist%nnb            = 0
    raylist%maxnnb         = MAX_RAYLIST_LENGTH
-   raylist%searchcell     = 1
 
    allocate(raylist%intersections(raylist%maxnnb))
 
@@ -96,29 +94,30 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    type(raylist_type) raylist          !< raylist
    type(src_ray_type) :: curay !< transformed ray
    integer(i4b) :: searchimage
+   integer(i8b) :: searchcell  !< index of cell being searched
    
    do searchimage = lbound(psys%box%trafo, 1), ubound(psys%box%trafo, 1)
+      searchcell = 1
       call src_ray_transform( active_rays(rayn), curay, psys%box%trafo(searchimage) )
-      call raysearch(psys, searchtree, curay, rayn, raylist)
+      call raysearch(psys, searchtree, curay, rayn, raylist, searchcell)
 ! this is strange, if raylist%searchcell != 0 something must be wrong,
 ! shall we print an error instead?
-      if (raylist%searchcell /= 0) return 
-      raylist%searchcell = 1
+      if (searchcell /= 0) return 
    enddo
-   raylist%searchcell = 0
 
  end subroutine fullsearch
 
 
 !> checks a single search image for intersection
 !-----------------------------------------------
- subroutine raysearch(psys, searchtree, curay, rayn, raylist)
+ subroutine raysearch(psys, searchtree, curay, rayn, raylist, searchcell)
 
    type(src_ray_type), intent(in) :: curay !< transformed ray
    integer(i4b), intent(in) :: rayn    !< activerays[rayn] will be traced
    type(particle_system_type), intent(in) :: psys         !< particle system
    type(oct_tree_type), intent(in), target :: searchtree  !< oct-tree to search
    type(raylist_type) :: raylist                          !< raylist
+   integer(i8b), intent(inout) :: searchcell  !< index of cell being searched
 
 
    type(oct_tree_type), pointer :: tree      !< pointer to tree
@@ -132,7 +131,7 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    tree => searchtree
 
    ! curay%start = ray%start * fac + shift
-   next = raylist%searchcell
+   next = searchcell
 
    do while (next /= 0)
 
@@ -149,7 +148,7 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
          par_in_cell = tree%cell(next)%start - tree%cell(this)%start
          if (raylist%nnb + par_in_cell > raylist%maxnnb) then             
             write(*,*) ' *** reached max intersections *** '
-            raylist%searchcell = this
+            searchcell = this
             return            
          endif
          
@@ -176,7 +175,7 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
    enddo
    
-   raylist%searchcell = next
+   searchcell = next
    
  end subroutine raysearch
 
@@ -189,7 +188,6 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
   
      raylist%nnb=0
      raylist%maxnnb=MAX_RAYLIST_LENGTH
-     raylist%searchcell=0
      deallocate(raylist%intersections)
 
  end subroutine kill_raylist
