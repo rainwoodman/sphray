@@ -175,7 +175,7 @@ contains
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do rayn = 1, CV%IonFracOutRays
             ! begin ray tracing and updating 
-            call prepare_raysearch(psys, raylists(TID))
+            call prepare_raysearch(raylists(TID))
             call trace_ray(rayn, raylists(TID), psys, tree) 
             call update_raylist(raylists(TID),psys%par,psys%box, localAVs(TID))
             ! done ray tracing and updating

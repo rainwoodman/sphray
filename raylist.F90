@@ -71,9 +71,8 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
  
 !> initialize raylist variables and set search images
 !------------------------------------------------------
- subroutine prepare_raysearch(psys, raylist)
+ subroutine prepare_raysearch(raylist)
 
-   type(particle_system_type) psys !< particle system
    type(raylist_type) raylist      !< ray list
   
    raylist%nnb            = 0
