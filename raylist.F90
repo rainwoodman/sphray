@@ -25,7 +25,8 @@ implicit none
  real, parameter :: zero = 0.0d0
  real, parameter :: half = 0.5d0
 
- integer,parameter :: MAX_RAYLIST_LENGTH = 1000000  !< default maximum
+! integer,parameter :: MAX_RAYLIST_LENGTH = 1000000  !< default maximum
+ integer,parameter :: MAX_RAYLIST_LENGTH = 256 !< default maximum
 
 
 !> holds a particle index, an impact parameter, and a distance along a ray
@@ -141,21 +142,13 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
       !----------------------------
       if (daughter == 0) then
 
-         ! return if we go over max intersections
-         !--------------------------------------------
-         par_in_cell = tree%cell(next)%start - tree%cell(this)%start
-         if (raylist%nnb + par_in_cell > size(raylist%intersections, 1)) then             
-            write(*,*) ' *** reached max intersections *** '
-            searchcell = this
-            return            
-         endif
-         
          ! add intersected particles to list
          !----------------------------------------------
          do i = tree%cell(this)%start, tree%cell(next)%start - 1
             orderindx = tree%partorder(i)
             par_hit = src_ray_part_intersection( curay, psys%par(orderindx) ) 
             if (par_hit) then
+               call grow_raylist_if_needed(raylist)
                raylist%nnb = raylist%nnb + 1
                call set_intersection(raylist%intersections(raylist%nnb), curay, rayn, orderindx)
             endif
@@ -188,6 +181,21 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
      deallocate(raylist%intersections)
 
  end subroutine kill_raylist
+
+!> grow a raylist
+!---------------------------------
+ subroutine grow_raylist_if_needed(raylist)
+
+   type(raylist_type) :: raylist !< the raylist to grow
+   type(intersection_type) :: copy(size(raylist%intersections,1))
+   integer(i8b) :: newlen
+   if (raylist%nnb < size(raylist%intersections, 1)) return
+   copy = raylist%intersections
+   newlen = size(raylist%intersections, 1) * 2
+   deallocate(raylist%intersections)
+   allocate(raylist%intersections(newlen))
+   raylist%intersections(1:size(copy, 1)) = copy(1:size(copy,1))
+ end subroutine grow_raylist_if_needed
 
 
 
