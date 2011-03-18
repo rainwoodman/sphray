@@ -22,7 +22,7 @@ module mainloop_mod
   use global_mod, only: psys
   use global_mod, only: tree
   use global_mod, only: GV
-  use global_mod, only: AV
+  use global_mod, only: AV, accounting_variables_type, reduce_accounting_variables
   use global_mod, only: PLAN
   use global_mod, only: active_rays
   use config_mod, only: CV
@@ -42,6 +42,7 @@ contains
     implicit none
     integer TID, OMP_GET_THREAD_NUM, NTRD, OMP_GET_NUM_THREADS
     type(raylist_type),allocatable :: raylists(:)       !< ray/particle intersections
+    type(accounting_variables_type),allocatable :: localAVs(:)       !< ray/particle intersections
     character(clen), parameter :: myname="mainloop"
     logical, parameter :: crash=.true.
     integer, parameter :: verb=1
@@ -168,13 +169,14 @@ contains
          PRINT *, 'Hello from thread', TID, NTRD
          !$OMP SINGLE
          allocate(raylists(0:NTRD-1))
+         allocate(localAVs(0:NTRD-1))
          !$OMP END SINGLE
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do rayn = 1, CV%IonFracOutRays
             ! begin ray tracing and updating 
             call prepare_raysearch(psys, raylists(TID))
             call trace_ray(rayn, raylists(TID), psys, tree) 
-            call update_raylist(raylists(TID),psys%par,psys%box)
+            call update_raylist(raylists(TID),psys%par,psys%box, localAVs(TID))
             ! done ray tracing and updating
             ! free up the memory from the globalraylist.
             call kill_raylist(raylists(TID))
@@ -182,6 +184,10 @@ contains
          !$OMP END DO
          !$OMP SINGLE
          deallocate(raylists)
+         do tid = 0, NTRD - 1
+           call reduce_accounting_variables(localAVs(tid))
+         enddo
+         deallocate(localAVs)
          !$OMP END SINGLE
          !$OMP END PARALLEL
           ! update some really unused global variables only before output
