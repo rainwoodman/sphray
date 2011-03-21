@@ -27,7 +27,7 @@ use config_mod, only: CV
 implicit none
 
 private
-public :: update_raylist
+public :: update_intersection
 
  
 contains
@@ -66,20 +66,14 @@ subroutine set_bools( He, caseA, isoT, fixT )
 end subroutine set_bools
 
 
-
-!> updates the particles intersected by a ray 
-!!-----------------------------------------------------------------
-subroutine update_raylist(raylist, pars, box, localAV)
-
-  type(raylist_type), intent(inout) :: raylist !< ray/particle intersections
+subroutine update_intersection(intersection, pars, box, localAV)
+  type(intersection_type), intent(inout) :: intersection
   type(particle_type), intent(inout) :: pars(:)  !< particle system
   type(box_type), intent(in) :: box  !< particle system
   type(accounting_variables_type), intent(inout) :: localAV !< accumulate the accountings to here
   type(particle_type) :: par
   type(ionpart_type) :: ipar
-  type(intersection_type) :: intersection
   type(src_ray_type) :: ray
-  integer(i8b) :: impact  
   integer(i4b) :: rayn
   integer(i8b) :: scalls  ! number of calls to solver
   logical :: photo
@@ -89,37 +83,34 @@ subroutine update_raylist(raylist, pars, box, localAV)
   logical :: fixT
 
 
-  ! set booleans
-  !-------------------------------------------------------
-  call set_bools( He, caseA, isoT, fixT )
-  photo = .true.
-
-  print *, 'total intersections', raylist%nnb  
-  ! loop through the ray particle intersections
-  !-------------------------------------------------------
-  impact_loop: do impact = 1,raylist%nnb
-
-     intersection = raylist%intersections(impact)
      par = pars(intersection%pindx)
      rayn = intersection%rayn
      ray = active_rays(rayn)
-     
      if (ray%exhausted ) then 
-        cycle
+        return
      endif
+  photo = .True.
+  ! set booleans
+  !-------------------------------------------------------
+  call set_bools( He, caseA, isoT, fixT )
+
+     localAV%ParticleCrossings = localAV%ParticleCrossings + 1     
+     call initialize_ionpar(ipar, intersection, He)
+
      ! check we dont have double intersections when we shouldn't
      !-------------------------------------------------------------
      if (ray%srcray) then
         if (box%tbound(1)==1 .and. ray%emit_time == par%lasthit) then
            ! here we have periodic BCs and a particle has been hit
            ! twice by the same ray so we stop tracing 
-           localAV%PhotonsLeavingBox = localAV%PhotonsLeavingBox + ray%pcnt
            ray%exhausted =.True.
+           active_rays(rayn) = ray
+           return
         else if (box%tbound(1)==0 .and. ray%emit_time == par%lasthit) then
            ! here we have transmissive BCs and a particle has been hit
            ! twice by the same ray so something is wrong
            write(*,*) "transmissive BCs and particle hit twice in one ray!"
-           write(*,*) "impact  = ", impact
+           write(*,*) "check bounadry conditions"
            ipar%strtag = "check boundary conditions"
            call ionpar2screen(ipar)
            stop
@@ -128,8 +119,6 @@ subroutine update_raylist(raylist, pars, box, localAV)
      if (ray%emit_time < par%lasthit) then
          stop "ray emit_time < par%lasthit, causaulity broken, stopping"
      endif
-     localAV%ParticleCrossings = localAV%ParticleCrossings + 1     
-     call initialize_ionpar(ipar, intersection, He)
 
 
 !     write(*,*) "d,dl:", raylist%intersection(impact)%d, ipar%dl
@@ -211,7 +200,6 @@ subroutine update_raylist(raylist, pars, box, localAV)
         ray%pcnt = ray%pcnt - ipar%pdeps
      endif
      
-     
      ! if photons are exhausted
      !-------------------------------
      if (ray%pini > 0.0) then
@@ -220,18 +208,10 @@ subroutine update_raylist(raylist, pars, box, localAV)
         end if
      end if
 
-     active_rays(rayn) = ray
      
-  end do impact_loop
+     active_rays(rayn) = ray
 
-!  stop "finished impact loop"
-
-end subroutine update_raylist
-
-
-
-
-
+end subroutine update_intersection
 
 
 

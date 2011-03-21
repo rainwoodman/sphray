@@ -38,6 +38,7 @@ implicit none
       real :: b          !< impact parameter
       real :: d          !< distance along ray
       real :: dl         !< path length
+      real(r8b):: t      !< time of impact, useful in race-resolving
    end type intersection_type
  
 !> grouping of all things ray + impacts
@@ -258,9 +259,15 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
    logical :: wantsort
 
    integer(i8b) :: first
+   integer(i8b) :: i 
    first = raylist%nnb + 1
    call fullsearch(psys, searchtree, rayn, raylist)
    call sort3_raylist(raylist, first, raylist%nnb)
+
+   do i = first, raylist%nnb
+     !ensure a unique impact time
+     raylist%intersections(i)%t = active_rays(rayn)%emit_time + real(i-first) / (raylist%nnb - first + 1)
+   enddo
  end subroutine trace_ray
 
 
