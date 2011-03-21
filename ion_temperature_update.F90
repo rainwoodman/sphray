@@ -94,7 +94,7 @@ subroutine update_raylist(raylist, pars, box, localAV)
   call set_bools( He, caseA, isoT, fixT )
   photo = .true.
 
-  
+  print *, 'total intersections', raylist%nnb  
   ! loop through the ray particle intersections
   !-------------------------------------------------------
   impact_loop: do impact = 1,raylist%nnb

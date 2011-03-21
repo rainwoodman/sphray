@@ -172,17 +172,17 @@ contains
          allocate(localAVs(0:NTRD-1))
          !$OMP END SINGLE
          call clear_accounting_variables(localAVs(TID))
+         ! begin ray tracing and updating 
+         call prepare_raysearch(raylists(TID))
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do rayn = 1, CV%IonFracOutRays
-            ! begin ray tracing and updating 
-            call prepare_raysearch(raylists(TID))
             call trace_ray(rayn, raylists(TID), psys, tree) 
-            call update_raylist(raylists(TID),psys%par,psys%box, localAVs(TID))
-            ! done ray tracing and updating
-            ! free up the memory from the globalraylist.
-            call kill_raylist(raylists(TID))
           enddo
          !$OMP END DO
+         call update_raylist(raylists(TID),psys%par,psys%box, localAVs(TID))
+         ! free up the memory from the globalraylist.
+         call kill_raylist(raylists(TID))
+         ! done ray tracing and updating
          !$OMP SINGLE
          deallocate(raylists)
          do tid = 0, NTRD - 1
