@@ -222,15 +222,6 @@ subroutine update_raylist(raylist, pars, box, localAV)
 
      active_rays(rayn) = ray
      
-     ! if vacuum BCs and exiting box
-     !-------------------------------
-     if(box%tbound(1)==0) then
-        if(impact==raylist%nnb) then
-           localAV%PhotonsLeavingBox = localAV%PhotonsLeavingBox + ray%pcnt
-        end if
-     end if
-
-     
   end do impact_loop
 
 !  stop "finished impact loop"

@@ -191,6 +191,15 @@ contains
          deallocate(localAVs)
          !$OMP END SINGLE
          !$OMP END PARALLEL
+         ! if vacuum BCs and exiting box, claim the leftovers
+         if(psys%box%tbound(1)==0) then
+           do rayn = 1, CV%IonFracOutRays
+             if(.not. active_rays(rayn)%exhausted) then
+               AV%PhotonsLeavingBox = AV%PhotonsLeavingBox + active_rays(rayn)%pcnt
+             end if
+           enddo
+         end if
+
           ! update some really unused global variables only before output
           ! yfeng1
           AV%IonizingPhotonsPerSec = AV%TotalPhotonsCast / (GV%itime * GV%dt_s)
