@@ -43,7 +43,7 @@ implicit none
 !> grouping of all things ray + impacts
 !--------------------------------------- 
    type raylist_type
-      integer :: nnb              !< number of intersections
+      integer(i8b) :: nnb              !< number of intersections
       type(intersection_type), allocatable :: intersections(:) !< ray/par 
    end type raylist_type
 
@@ -220,24 +220,26 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 !! closest to the origin of the ray first in the list.   The corresponding 
 !! changes are made to pindx and b
 !---------------------------------------------------------------------------
- subroutine sort3_raylist(raylist)
+ subroutine sort3_raylist(raylist, first, last)
  use m_mrgrnk, only: mrgrnk
  implicit none
 
    type(raylist_type) :: raylist     !< raylist to sort
-
+   integer(i8b) :: first
+   integer(i8b) :: last
    integer(i8b) :: N 
-   integer(i8b) :: indexx(raylist%nnb)
-   real(r8b) :: darr(raylist%nnb)
+   integer(i8b) :: indexx(last - first + 1)
+   real(r8b) :: darr(last - first + 1)
 
-   N = raylist%nnb
-   darr(1:N)=raylist%intersections(1:N)%d
+   if ( last <= first) return
+   N = last - first + 1
+   darr(1:N)=raylist%intersections(first:last)%d
    call mrgrnk(darr,indexx)
-
-   raylist%intersections(1:N)%d=raylist%intersections(indexx(1:N))%d  
-   raylist%intersections(1:N)%b=raylist%intersections(indexx(1:N))%b 
-   raylist%intersections(1:N)%pindx=raylist%intersections(indexx(1:N))%pindx  
-   raylist%intersections(1:N)%rayn=raylist%intersections(indexx(1:N))%rayn
+   indexx = indexx + first - 1
+   raylist%intersections(first:last)%d=raylist%intersections(indexx(1:N))%d  
+   raylist%intersections(first:last)%b=raylist%intersections(indexx(1:N))%b 
+   raylist%intersections(first:last)%pindx=raylist%intersections(indexx(1:N))%pindx  
+   raylist%intersections(first:last)%rayn=raylist%intersections(indexx(1:N))%rayn
 
  end subroutine sort3_raylist
 
@@ -255,10 +257,10 @@ subroutine set_intersection(intersection, curay, rayn, pindx)
 
    logical :: wantsort
 
+   integer(i8b) :: first
+   first = raylist%nnb + 1
    call fullsearch(psys, searchtree, rayn, raylist)
-
-   call sort3_raylist(raylist)
-
+   call sort3_raylist(raylist, first, raylist%nnb)
  end subroutine trace_ray
 
 
