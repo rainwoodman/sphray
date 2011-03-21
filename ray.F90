@@ -53,6 +53,7 @@ type src_ray_type
    real(r8b) :: dt_s      !< time step associated with ray [s]
    integer(i8b) :: emit_time   !< integer id of the ray, not sure if useful at all, replacing GV%emit_time
    logical(i4b) :: srcray !< is the ray from the source or a recombination ray?
+   logical(i4b) :: exhausted !< if the ray is exhausted
 end type src_ray_type
 
 
@@ -100,6 +101,7 @@ contains
 !  [photons/s].  
 
     ray%srcray = .True.
+    ray%exhausted = .False.
     ray%emit_time = emit_time
     select case (src%EmisPrf)
        

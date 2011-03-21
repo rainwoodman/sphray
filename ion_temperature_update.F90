@@ -104,7 +104,9 @@ subroutine update_raylist(raylist, pars, box, localAV)
      rayn = intersection%rayn
      ray = active_rays(rayn)
      
-
+     if (ray%exhausted ) then 
+        cycle
+     endif
      ! check we dont have double intersections when we shouldn't
      !-------------------------------------------------------------
      if (ray%srcray) then
@@ -112,7 +114,7 @@ subroutine update_raylist(raylist, pars, box, localAV)
            ! here we have periodic BCs and a particle has been hit
            ! twice by the same ray so we stop tracing 
            localAV%PhotonsLeavingBox = localAV%PhotonsLeavingBox + ray%pcnt
-           exit
+           ray%exhausted =.True.
         else if (box%tbound(1)==0 .and. ray%emit_time == par%lasthit) then
            ! here we have transmissive BCs and a particle has been hit
            ! twice by the same ray so something is wrong
@@ -214,7 +216,7 @@ subroutine update_raylist(raylist, pars, box, localAV)
      !-------------------------------
      if (ray%pini > 0.0) then
         if (ray%pcnt / ray%pini < CV%RayPhotonTol) then
-           exit
+           ray%exhausted =.True.
         end if
      end if
 
