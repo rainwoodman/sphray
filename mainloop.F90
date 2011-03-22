@@ -26,7 +26,7 @@ module mainloop_mod
   use global_mod, only: PLAN
   use global_mod, only: active_rays
   use config_mod, only: CV
-  use resolve_mod, only: resolution_type, resolve, resolution_get_intersection, prepare_resolution, kill_resolution
+  use resolve_mod, only: resolution_type, resolve_more, resolution_get_resolved_intersection, prepare_resolution, kill_resolution
   
   implicit none
   
@@ -165,6 +165,7 @@ contains
           ! done creation of a ray
           enddo
 
+         print *, "tracing"
          !$OMP PARALLEL FIRSTPRIVATE(rayn, TID, NTRD, j, intersection)
          TID = OMP_GET_THREAD_NUM()
          NTRD = OMP_GET_NUM_THREADS()
@@ -173,47 +174,43 @@ contains
          allocate(raylists(0:NTRD-1))
          allocate(localAVs(0:NTRD-1))
          !$OMP END SINGLE
-         call clear_accounting_variables(localAVs(TID))
          ! begin ray tracing and updating 
          call prepare_raysearch(raylists(TID))
-         !$OMP SINGLE
-         print *, "tracing"
-         !$OMP END SINGLE
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do rayn = 1, CV%IonFracOutRays
             call trace_ray(rayn, raylists(TID), psys, tree) 
           enddo
          !$OMP END DO
-         !$OMP SINGLE
+         !$OMP END PARALLEL
          print *, "done tracing"
-         !$OMP END SINGLE
 
          ! this section resolves the races and causalities
-         !$OMP SINGLE
          call prepare_resolution(resolution, raylists)
-         print *, "done planning a resolution for total nnb ", size(resolution%encoded_impacts, 1)
-         !$OMP END SINGLE
-
-         ! this section updates the intersections
-         !$OMP DO SCHEDULE(DYNAMIC, 1)
-         do j = 1, size(resolution%encoded_impacts, 1)
-           call resolution_get_intersection(resolution, raylists, j, intersection)
-           call update_intersection(intersection, psys%par,psys%box, localAVs(tid))
-         enddo 
-         !$OMP END DO
-           
+         do while(resolution%remaining_nnb > 0)
+           call resolve_more(resolution, raylists)
+           print *, "done planning a resolution, remaining", resolution%remaining_nnb
+           ! this section updates the intersections
+           !$OMP PARALLEL FIRSTPRIVATE(j, TID)
+           TID = OMP_GET_THREAD_NUM()
+           call clear_accounting_variables(localAVs(TID))
+           !$OMP DO SCHEDULE(DYNAMIC, 1)
+           do j = 1, resolution%good_nnb
+             call resolution_get_resolved_intersection(resolution, raylists, j, intersection)
+             call update_intersection(intersection, psys%par,psys%box, localAVs(TID))
+           enddo 
+           !$OMP END DO
+           !$OMP END PARALLEL
+         end do
          ! free up the memory from the globalraylist.
-         call kill_raylist(raylists(TID))
          ! done ray tracing and updating
-         !$OMP SINGLE
          call kill_resolution(resolution)
-         deallocate(raylists)
          do tid = 0, NTRD - 1
            call reduce_accounting_variables(localAVs(tid))
+           call kill_raylist(raylists(TID))
          enddo
+         deallocate(raylists)
          deallocate(localAVs)
-         !$OMP END SINGLE
-         !$OMP END PARALLEL
+
          ! if vacuum BCs and exiting box, claim the leftovers
          if(psys%box%tbound(1)==0) then
            do rayn = 1, CV%IonFracOutRays
