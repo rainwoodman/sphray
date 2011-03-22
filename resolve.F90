@@ -1,3 +1,7 @@
+! the word resolution was inspired by the United Nations. - Yu
+! this module contains the subroutines to plan for the parallized
+! executation of temperature and ionization updating.
+
 
 module resolve_mod
   
@@ -54,7 +58,6 @@ contains
      integer(i4b):: NTRD, tid
      integer(i8b):: chunk_start
      type(intersection_type) :: a, b, c
-  
 
   end subroutine resolve
 
