@@ -167,19 +167,17 @@ contains
           enddo
 
          print *, "tracing"
-         !$OMP PARALLEL FIRSTPRIVATE(rayn, TID, NTRD, j, intersection)
-         TID = OMP_GET_THREAD_NUM()
          NTRD = OMP_GET_NUM_THREADS()
-         PRINT *, 'Hello from thread', TID, NTRD
-         !$OMP SINGLE
-         allocate(raylists(0:NTRD-1))
+         allocate(raylists(CV%IonFracOutRays))
          allocate(localAVs(0:NTRD-1))
-         !$OMP END SINGLE
+         !$OMP PARALLEL FIRSTPRIVATE(rayn, TID, j, intersection)
+         TID = OMP_GET_THREAD_NUM()
+         PRINT *, 'Hello from thread', TID, NTRD
          ! begin ray tracing and updating 
-         call prepare_raysearch(raylists(TID))
          !$OMP DO SCHEDULE(DYNAMIC, 1)
           do rayn = 1, CV%IonFracOutRays
-            call trace_ray(rayn, raylists(TID), psys, tree) 
+            call prepare_raysearch(raylists(rayn))
+            call trace_ray(rayn, raylists(rayn), psys, tree) 
           enddo
          !$OMP END DO
          !$OMP END PARALLEL
@@ -200,6 +198,7 @@ contains
              call update_intersection(intersection, psys%par,psys%box, localAVs(TID))
            enddo 
            !$OMP END DO
+           print *, localAVs(TID)%ParticleCrossings
            !$OMP END PARALLEL
            print *, "done updating a resolution, remaining", OMP_GET_WTIME()
          end do
@@ -207,8 +206,11 @@ contains
          ! done ray tracing and updating
          call kill_resolution(resolution)
          do tid = 0, NTRD - 1
+           print *, 'reduced', tid
            call reduce_accounting_variables(localAVs(tid))
-           call kill_raylist(raylists(TID))
+         enddo
+         do rayn = 1, CV%IonFracOutRays
+           call kill_raylist(raylists(rayn))
          enddo
          deallocate(raylists)
          deallocate(localAVs)
