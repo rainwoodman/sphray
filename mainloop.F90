@@ -41,6 +41,7 @@ contains
   subroutine mainloop()
     implicit none
     integer TID, OMP_GET_THREAD_NUM, NTRD, OMP_GET_NUM_THREADS
+    real(r8b) OMP_GET_WTIME
     type(raylist_type),allocatable :: raylists(:)       !< ray/particle intersections
     type(accounting_variables_type),allocatable :: localAVs(:)       !< ray/particle intersections
     character(clen), parameter :: myname="mainloop"
@@ -188,7 +189,7 @@ contains
          call prepare_resolution(resolution, raylists)
          do while(resolution%remaining_nnb > 0)
            call resolve_more(resolution, raylists)
-           print *, "done planning a resolution, remaining", resolution%remaining_nnb
+           print *, "done planning a resolution, remaining", resolution%remaining_nnb, OMP_GET_WTIME()
            ! this section updates the intersections
            !$OMP PARALLEL FIRSTPRIVATE(j, TID)
            TID = OMP_GET_THREAD_NUM()
@@ -200,6 +201,7 @@ contains
            enddo 
            !$OMP END DO
            !$OMP END PARALLEL
+           print *, "done updating a resolution, remaining", OMP_GET_WTIME()
          end do
          ! free up the memory from the globalraylist.
          ! done ray tracing and updating

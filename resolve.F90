@@ -77,16 +77,16 @@ contains
        ! pop up the head from pool, to c
        call resolution_get_intersection(resolution, raylists, pool_head, c)
        pool_head = pool_head + 1
-       do i = 1, good_tail, 1
-         call resolution_get_intersection(resolution, raylists, resolution%good(i), a)
-         if (race(a, c)) then 
+       do i = bad_tail, 1, -1
+         call resolution_get_intersection(resolution, raylists, bad(i), a)
+         if (cconflict(c, a)) then
            good_candidate = .False.
            exit
          endif
        enddo
-       do i = 1, bad_tail, 1
-         call resolution_get_intersection(resolution, raylists, bad(i), a)
-         if (cconflict(c, a)) then
+       do i = good_tail, 1, -1
+         call resolution_get_intersection(resolution, raylists, resolution%good(i), a)
+         if (race(a, c)) then 
            good_candidate = .False.
            exit
          endif
@@ -99,7 +99,7 @@ contains
           bad(bad_tail) = candidate_index
        endif
        
-       if(bad_tail > 1000 .or. good_tail > 1000) then
+       if(good_tail > 1000) then
 !         print *, 'stop planning, good/bad = ', good_tail, bad_tail
 !         do i = 1, bad_tail, 1
 !            call resolution_get_intersection(resolution, raylists, bad(i), a)
