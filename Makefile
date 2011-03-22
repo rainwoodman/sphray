@@ -65,6 +65,7 @@ OBJS =  myf03.o mt19937.o m_mrgrnk.o \
 		ionpar.o euler.o bdf.o ion_temperature_update.o \
 		$(READERS) update_particles.o source_input.o main_input.o output.o \
 		initialize.o \
+		resolve.o \
 		mainloop.o \
 		$(NULL)
 

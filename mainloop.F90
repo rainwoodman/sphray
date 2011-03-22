@@ -26,7 +26,7 @@ module mainloop_mod
   use global_mod, only: PLAN
   use global_mod, only: active_rays
   use config_mod, only: CV
-
+  use resolve_mod, only: resolution_type, resolve, resolution_get_intersection, prepare_resolution, kill_resolution
   
   implicit none
   
@@ -34,9 +34,6 @@ module mainloop_mod
 
   integer(i4b), parameter :: rays_per_leaf = 2
   integer(i4b), parameter :: rays_per_dt = 1
-  type resolution_type
-    integer(i8b) :: encoded_impact  !< tid * max_nnb + impact
-  end type resolution_type
 contains
   
   !> this is the main driver of SPHRAY
@@ -62,12 +59,10 @@ contains
     integer(i8b) :: raybatch !< ray counter, at integer batch startings
     integer(i4b) :: rayn  !< ray counter, inner loop
     integer(i8b) :: srcn  !< source counter
-    integer(i8b) :: impact !< source counter
-    integer(i8b) :: j !< resolution counter
-    integer(i8b) :: total_nnb !< total number of intersections
-    integer(i8b) :: max_nnb !< max number of intersections
+    integer(i8b) :: j !< resolution encoded_impacts counter
     
-    type(resolution_type), allocatable :: resolution(:) !< thread racing and causality resolution
+    type(resolution_type):: resolution !< thread racing and causality resolution
+    type(intersection_type):: intersection!< intersection
     real(r8b) :: rn       !< random number
     real(r8b) :: MB       !< MBs for memory consumption tracking
     
@@ -170,7 +165,7 @@ contains
           ! done creation of a ray
           enddo
 
-         !$OMP PARALLEL FIRSTPRIVATE(rayn, TID, NTRD, impact, j)
+         !$OMP PARALLEL FIRSTPRIVATE(rayn, TID, NTRD, j, intersection)
          TID = OMP_GET_THREAD_NUM()
          NTRD = OMP_GET_NUM_THREADS()
          PRINT *, 'Hello from thread', TID, NTRD
@@ -195,34 +190,15 @@ contains
 
          ! this section resolves the races and causalities
          !$OMP SINGLE
-         total_nnb = 0
-         max_nnb = 0
-         j = 1
-         do tid = 0, NTRD -1 
-            total_nnb = total_nnb + raylists(tid)%nnb
-            max_nnb = max(max_nnb, raylists(tid)%nnb)
-         enddo
-         print *, "planning a resolution for total nnb ", total_nnb
-         allocate(resolution(total_nnb))
-         do tid = 0, NTRD - 1
-           do impact = 1, raylists(tid)%nnb
-              resolution(j)%encoded_impact = tid * (max_nnb + 1)+ impact
-              j = j + 1
-           enddo
-         enddo
-         print *, "done planning a resolution for total nnb ", total_nnb
+         call prepare_resolution(resolution, raylists)
+         print *, "done planning a resolution for total nnb ", size(resolution%encoded_impacts, 1)
          !$OMP END SINGLE
 
          ! this section updates the intersections
          !$OMP DO SCHEDULE(DYNAMIC, 1)
-         do j = 1, total_nnb
-           tid = resolution(j)%encoded_impact / (max_nnb + 1)
-           impact = mod(resolution(j)%encoded_impact,  max_nnb + 1)
-           if(impact > raylists(tid)%nnb) then
-             print *, tid, impact, resolution(j)%encoded_impact
-             stop 
-           endif
-           call update_intersection(raylists(tid)%intersections(impact), psys%par,psys%box, localAVs(tid))
+         do j = 1, size(resolution%encoded_impacts, 1)
+           call resolution_get_intersection(resolution, raylists, j, intersection)
+           call update_intersection(intersection, psys%par,psys%box, localAVs(tid))
          enddo 
          !$OMP END DO
            
@@ -230,7 +206,7 @@ contains
          call kill_raylist(raylists(TID))
          ! done ray tracing and updating
          !$OMP SINGLE
-         deallocate(resolution)
+         call kill_resolution(resolution)
          deallocate(raylists)
          do tid = 0, NTRD - 1
            call reduce_accounting_variables(localAVs(tid))
@@ -322,4 +298,5 @@ contains
     
   end subroutine mainloop
   
+
 end module mainloop_mod
