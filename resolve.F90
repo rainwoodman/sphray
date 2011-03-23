@@ -13,6 +13,7 @@ module resolve_mod
     integer(i8b):: secret !< used to encode the raylist id and impact id
     integer(i8b),allocatable :: good(:)
     integer(i8b):: good_nnb
+    integer(i8b),allocatable :: pool_head(:)
   end type resolution_type
 contains
 
@@ -42,21 +43,16 @@ contains
      enddo
      resolution%secret = size(raylists, 1) + 1
      allocate(resolution%good(total_nnb))
+     allocate(resolution%pool_head(size(raylists, 1)))
      resolution%good_nnb = 0
      resolution%remaining_nnb = total_nnb
+     resolution%pool_head(:) = 1
   end subroutine prepare_resolution 
 
-  subroutine resolve_more(resolution, raylists)
+  subroutine resolve_all(resolution, raylists)
      type(raylist_type), intent(in), allocatable :: raylists(:)
      type(resolution_type), intent(inout) :: resolution
-     integer(i8b) :: good_tail
-     integer(i8b) :: pool_head(size(raylists, 1))
-     type (intersection_type) :: a, c
-     logical(i4b) :: good_candidate
      integer(i8b) :: i, j, k
-     good_tail = 0
-     pool_head = 1
-
      j = 0
      do i = 1, size(raylists, 1)
        do k = 1, raylists(i)%nnb
@@ -66,10 +62,21 @@ contains
      enddo
      resolution%good_nnb = j
      resolution%remaining_nnb = 0
-     return 
-     do i = 1, size(pool_head), 1
-        if (pool_head(i) > raylists(i)%nnb) cycle
-        c = raylists(i)%intersections(pool_head(i))
+  end subroutine resolve_all
+
+  subroutine resolve_more(resolution, raylists)
+     type(raylist_type), intent(in), allocatable :: raylists(:)
+     type(resolution_type), intent(inout) :: resolution
+     integer(i8b) :: good_tail
+     type (intersection_type) :: a, c
+     logical(i4b) :: good_candidate
+     integer(i8b) :: i, j, k
+     good_tail = 0
+     do i = 1, size(resolution%pool_head), 1
+        if (resolution%pool_head(i) > raylists(i)%nnb) then 
+            cycle
+        endif
+        c = raylists(i)%intersections(resolution%pool_head(i))
         good_candidate = .True.
         do j = 1, good_tail, 1
            call resolution_get_resolved_intersection(resolution, raylists, j, a)
@@ -80,7 +87,7 @@ contains
         enddo
         if (good_candidate) then
            outer: do j = 1, i - 1, 1
-             do k = pool_head(j), raylists(j)%nnb, 1
+             do k = resolution%pool_head(j), raylists(j)%nnb, 1
                 if (raylists(j)%intersections(k)%pindx == c%pindx) then
                    good_candidate = .False.
                    exit outer
@@ -90,8 +97,10 @@ contains
         endif
         if (good_candidate) then
           good_tail = good_tail + 1
-          resolution%good(good_tail) = resolution%secret * pool_head(i) + i
-          pool_head(i) = pool_head(i) + 1
+          resolution%good(good_tail) = resolution%secret * resolution%pool_head(i) + i
+          resolution%pool_head(i) = resolution%pool_head(i) + 1
+        else
+          exit
         endif
      enddo
 
@@ -111,6 +120,7 @@ contains
   subroutine kill_resolution(resolution)
     type(resolution_type), intent(inout):: resolution
     deallocate(resolution%good)
+    deallocate(resolution%pool_head)
     resolution%secret = 0
   endsubroutine kill_resolution
 end module

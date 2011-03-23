@@ -26,7 +26,7 @@ module mainloop_mod
   use global_mod, only: PLAN
   use global_mod, only: active_rays
   use config_mod, only: CV
-  use resolve_mod, only: resolution_type, resolve_more, resolution_get_resolved_intersection, prepare_resolution, kill_resolution
+  use resolve_mod, only: resolution_type, resolve_more, resolve_all, resolution_get_resolved_intersection, prepare_resolution, kill_resolution
   
   implicit none
   
@@ -40,7 +40,7 @@ contains
   !======================================
   subroutine mainloop()
     implicit none
-    integer TID, OMP_GET_THREAD_NUM, NTRD, OMP_GET_NUM_THREADS
+    integer TID, OMP_GET_THREAD_NUM, NTRD, OMP_GET_MAX_THREADS
     real(r8b) OMP_GET_WTIME
     type(raylist_type),allocatable :: raylists(:)       !< ray/particle intersections
     type(accounting_variables_type),allocatable :: localAVs(:)       !< ray/particle intersections
@@ -167,10 +167,16 @@ contains
           enddo
 
          print *, "tracing"
-         NTRD = OMP_GET_NUM_THREADS()
          allocate(raylists(CV%IonFracOutRays))
+         NTRD = OMP_GET_MAX_THREADS()
+
          allocate(localAVs(0:NTRD-1))
+         do tid = 0, NTRD - 1
+           call clear_accounting_variables(localAVs(tid))
+         enddo
+
          !$OMP PARALLEL FIRSTPRIVATE(rayn, TID, j, intersection)
+
          TID = OMP_GET_THREAD_NUM()
          PRINT *, 'Hello from thread', TID, NTRD
          ! begin ray tracing and updating 
@@ -185,35 +191,38 @@ contains
 
          ! this section resolves the races and causalities
          call prepare_resolution(resolution, raylists)
+
          do while(resolution%remaining_nnb > 0)
-           call resolve_more(resolution, raylists)
-           print *, "done planning a resolution, remaining", resolution%remaining_nnb, OMP_GET_WTIME()
+           if (NTRD == 1) then
+             call resolve_all(resolution, raylists)
+           else
+             call resolve_more(resolution, raylists)
+           endif
            ! this section updates the intersections
-           !$OMP PARALLEL FIRSTPRIVATE(j, TID)
+           !$OMP PARALLEL FIRSTPRIVATE(j, TID, intersection)
            TID = OMP_GET_THREAD_NUM()
-           call clear_accounting_variables(localAVs(TID))
            !$OMP DO SCHEDULE(DYNAMIC, 1)
            do j = 1, resolution%good_nnb
              call resolution_get_resolved_intersection(resolution, raylists, j, intersection)
+             !print *, intersection%pindx, intersection%rayn, intersection%t
+             !print *, active_rays(intersection%rayn)%emit_time, psys%par(intersection%pindx)%lasthit
              call update_intersection(intersection, psys%par,psys%box, localAVs(TID))
            enddo 
            !$OMP END DO
-           print *, localAVs(TID)%ParticleCrossings
            !$OMP END PARALLEL
-           print *, "done updating a resolution, remaining", OMP_GET_WTIME()
          end do
+
          ! free up the memory from the globalraylist.
          ! done ray tracing and updating
          call kill_resolution(resolution)
          do tid = 0, NTRD - 1
-           print *, 'reduced', tid
            call reduce_accounting_variables(localAVs(tid))
          enddo
+         deallocate(localAVs)
          do rayn = 1, CV%IonFracOutRays
            call kill_raylist(raylists(rayn))
          enddo
          deallocate(raylists)
-         deallocate(localAVs)
 
          ! if vacuum BCs and exiting box, claim the leftovers
          if(psys%box%tbound(1)==0) then
