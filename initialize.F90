@@ -17,7 +17,7 @@ use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use main_input_mod, only: get_planning_data
 use config_mod, only: CV
 use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
-use global_mod, only: AV
+use accounting_mod, only: AV
 use particle_system_mod, only: return_bytes_per_particle
 use particle_system_mod, only: return_bytes_per_source
 implicit none

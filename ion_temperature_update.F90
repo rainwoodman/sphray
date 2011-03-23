@@ -21,7 +21,7 @@ use bdf_mod, only: bdfint
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: GV, saved_gheads, rtable
 use global_mod, only: active_rays
-use global_mod, only: accounting_variables_type
+use accounting_mod , only: accounting_variables_type
 
 use config_mod, only: CV
 implicit none

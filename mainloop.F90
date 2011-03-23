@@ -22,7 +22,7 @@ module mainloop_mod
   use global_mod, only: psys
   use global_mod, only: tree
   use global_mod, only: GV
-  use global_mod, only: AV, accounting_variables_type, reduce_accounting_variables, clear_accounting_variables
+  use accounting_mod, only: AV, accounting_variables_type, reduce_accounting_variables, clear_accounting_variables
   use global_mod, only: PLAN
   use global_mod, only: active_rays
   use config_mod, only: CV

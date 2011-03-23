@@ -60,7 +60,7 @@ OBJS =  myf03.o mt19937.o m_mrgrnk.o \
 		particle_system.o octtree3.o \
 		gadget_sphray_header_class.o \
 		ray.o \
-		global.o config.o \
+		global.o accounting.o config.o \
 		raylist.o \
 		ionpar.o euler.o bdf.o ion_temperature_update.o \
 		$(READERS) update_particles.o source_input.o main_input.o output.o \

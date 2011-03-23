@@ -15,7 +15,7 @@ use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use config_mod, only: CV
 use global_mod, only: PLAN, GV
-use global_mod, only: AV
+use accounting_mod, only: AV
 use global_mod, only: saved_gheads
 use config_mod, only: write_config_hdf5_lun
 
