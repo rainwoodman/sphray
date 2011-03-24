@@ -199,13 +199,13 @@ contains
              call resolve_more(resolution, raylists)
            endif
            ! this section updates the intersections
-           !$OMP PARALLEL FIRSTPRIVATE(j, TID, intersection) IF(resolution%good_nnb > 32)
+           !$OMP PARALLEL FIRSTPRIVATE(j, TID, intersection) IF(resolution%good_nnb > 10)
            TID = OMP_GET_THREAD_NUM()
            !$OMP DO 
            do j = 1, resolution%good_nnb
              call resolution_get_resolved_intersection(resolution, raylists, j, intersection)
-             !print *, intersection%pindx, intersection%rayn, intersection%t
-             !print *, active_rays(intersection%rayn)%emit_time, psys%par(intersection%pindx)%lasthit
+!             print *, 'inte', intersection%pindx, intersection%rayn, intersection%t
+!             print *, active_rays(intersection%rayn)%emit_time, psys%par(intersection%pindx)%lasthit
              call update_intersection(intersection, psys%par,psys%box, localAVs(TID))
            enddo 
            !$OMP END DO
