@@ -22,7 +22,8 @@ module mainloop_mod
   use global_mod, only: psys
   use global_mod, only: tree
   use global_mod, only: GV
-  use accounting_mod, only: AV, accounting_variables_type, reduce_accounting_variables, clear_accounting_variables
+  use accounting_mod, only: AV
+  use accounting_mod
   use global_mod, only: PLAN
   use global_mod, only: active_rays
   use config_mod, only: CV
@@ -166,7 +167,6 @@ contains
           ! done creation of a ray
           enddo
 
-         print *, "tracing"
          allocate(raylists(CV%IonFracOutRays))
          NTRD = OMP_GET_MAX_THREADS()
 
@@ -175,6 +175,7 @@ contains
            call clear_accounting_variables(localAVs(tid))
          enddo
 
+         call timer_init(AV, 1, "tracing", .True.)
          !$OMP PARALLEL FIRSTPRIVATE(rayn, TID, j, intersection)
 
          TID = OMP_GET_THREAD_NUM()
@@ -187,29 +188,40 @@ contains
           enddo
          !$OMP END DO
          !$OMP END PARALLEL
-         print *, "done tracing"
+         call timer_print(AV,1)
 
          ! this section resolves the races and causalities
-         call prepare_resolution(resolution, raylists)
+         call prepare_resolution(resolution, raylists, psys%par)
 
+         call timer_init(AV, 2, 'resolve', running=.False.)
          do while(resolution%remaining_nnb > 0)
+         call timer_init(AV, 3, 'good', running=.False.)
+         call timer_init(AV, 4, 'bad', running=.False.)
+         call timer_init(AV, 5, 'update', running=.False.)
            if (NTRD == 1) then
              call resolve_all(resolution, raylists)
            else
              call resolve_more(resolution, raylists)
            endif
            ! this section updates the intersections
-           !$OMP PARALLEL FIRSTPRIVATE(j, TID, intersection) IF(resolution%good_nnb > 10)
+           call timer_resume(AV,5)
+           !!$OMP PARALLEL FIRSTPRIVATE(j, TID, intersection) IF(resolution%good_nnb > 10)
            TID = OMP_GET_THREAD_NUM()
-           !$OMP DO 
+           !!$OMP DO 
            do j = 1, resolution%good_nnb
              call resolution_get_resolved_intersection(resolution, raylists, j, intersection)
-!             print *, 'inte', intersection%pindx, intersection%rayn, intersection%t
+             print *, 'inte', intersection%pindx, intersection%rayn, intersection%t
 !             print *, active_rays(intersection%rayn)%emit_time, psys%par(intersection%pindx)%lasthit
              call update_intersection(intersection, psys%par,psys%box, localAVs(TID))
            enddo 
-           !$OMP END DO
-           !$OMP END PARALLEL
+           !!$OMP END DO
+           !!$OMP END PARALLEL
+           call timer_pause(AV,5)
+         print *, 'goodnnb', resolution%good_nnb
+         call timer_print(AV, 2)
+         call timer_print(AV, 3)
+         call timer_print(AV, 4)
+         call timer_print(AV, 5)
          end do
 
          ! free up the memory from the globalraylist.
