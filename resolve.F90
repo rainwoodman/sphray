@@ -17,6 +17,8 @@ module resolve_mod
     integer(i8b),allocatable :: good(:)
     integer(i8b):: good_nnb
     integer(i8b),allocatable :: pool_head(:)
+    integer(i8b),allocatable :: pool_cur(:)
+    integer(i8b),allocatable :: pool_tail(:)
   end type resolution_type
 contains
 
@@ -57,10 +59,22 @@ contains
      integer(i8b),allocatable :: pindx(:), indexx(:)
      integer(i8b) :: total_nnb,  j, this, last, first, impact
      integer(i4b) :: rayln
+     allocate(resolution%pool_head(size(raylists, 1)))
+     allocate(resolution%pool_cur(size(raylists, 1)))
+     allocate(resolution%pool_tail(size(raylists, 1)))
      total_nnb = 0
      do rayln = 1, size(raylists, 1)
        total_nnb = total_nnb + raylists(rayln)%nnb
      enddo
+     
+     resolution%pool_head(1) = 1
+     resolution%pool_tail(1) = raylists(1)%nnb
+     do rayln = 2, size(raylists, 1)
+       resolution%pool_head(rayln) = resolution%pool_head(rayln - 1) + raylists(rayln - 1)%nnb
+       resolution%pool_tail(rayln) = resolution%pool_tail(rayln - 1) + raylists(rayln)%nnb
+     enddo
+     resolution%pool_cur = resolution%pool_head
+
      resolution%secret = size(raylists, 1) + 1
      allocate(resolution%good(total_nnb))
      allocate(resolution%encoded(total_nnb))
@@ -116,10 +130,8 @@ contains
      deallocate(indexx)
 
      print *, 'checked'
-     allocate(resolution%pool_head(size(raylists, 1)))
      resolution%good_nnb = 0
      resolution%remaining_nnb = total_nnb
-     resolution%pool_head(:) = 1
   end subroutine prepare_resolution 
 
   subroutine resolve_all(resolution, raylists)
@@ -144,14 +156,17 @@ contains
      integer(i8b) :: good_tail
      type (intersection_type) :: a, c
      logical(i4b) :: good_candidate
-     integer(i4b) :: i
-     integer(i8b) :: j, k
+     integer(i4b) :: rayln, raylm
+     integer(i8b) :: j, k, jmpact, this, first
      good_tail = 0
-     do i = 1, size(resolution%pool_head), 1
-        if (resolution%pool_head(i) > raylists(i)%nnb) then 
+     !do rayln = 1, size(raylists, 1)
+     !  print *, resolution%pool_head(rayln), resolution%pool_cur(rayln), resolution%pool_tail(rayln)
+     !enddo
+     do rayln = 1, size(resolution%pool_cur), 1
+        if (resolution%pool_cur(rayln) > resolution%pool_tail(rayln)) then 
             cycle
         endif
-        c = raylists(i)%intersections(resolution%pool_head(i))
+        c = raylists(rayln)%intersections(resolution%pool_cur(rayln) - resolution%pool_head(rayln) + 1)
         good_candidate = .True.
         do j = 1, good_tail, 1
            call resolution_get_resolved_intersection(resolution, raylists, j, a)
@@ -161,19 +176,33 @@ contains
            endif
         enddo
         if (good_candidate) then
-           outer: do j = 1, i - 1, 1
-             do k = resolution%pool_head(j), raylists(j)%nnb, 1
-                if (raylists(j)%intersections(k)%pindx == c%pindx) then
-                   good_candidate = .False.
-                   exit outer
-                endif
-             enddo
-           enddo outer
+           !print *, 'candidate', c%pindx, c%rayn, c%t
+           first = resolution%pool_cur(rayln)
+           this = resolution%plink(first)
+           do while (this /= first)
+              if(this > first) then
+                this = resolution%plink(this)
+                cycle
+              endif
+              call decode(resolution, resolution%encoded(this), raylm, jmpact)
+              a = raylists(raylm)%intersections(jmpact)
+              !print *, '  compare', a%pindx, a%rayn, a%t
+              if(raylm >= rayln) then
+                 stop "can't happen. an earlier intersection must be in an earlier ray"
+              endif
+              !print *, 'this', this, 'cur', resolution%pool_cur(raylm)
+              if(this >= resolution%pool_cur(raylm)) then
+              !  print *, 'rejected'
+                 good_candidate = .False.
+                 exit
+              endif
+              this = resolution%plink(this)
+           enddo
         endif
         if (good_candidate) then
           good_tail = good_tail + 1
-          resolution%good(good_tail) = encode(resolution, i, resolution%pool_head(i))
-          resolution%pool_head(i) = resolution%pool_head(i) + 1
+          resolution%good(good_tail) = encode(resolution, rayln, resolution%pool_cur(rayln) - resolution%pool_head(rayln) + 1)
+          resolution%pool_cur(rayln) = resolution%pool_cur(rayln) + 1
         else
           exit
         endif
@@ -196,7 +225,11 @@ contains
   subroutine kill_resolution(resolution)
     type(resolution_type), intent(inout):: resolution
     deallocate(resolution%good)
+    deallocate(resolution%plink)
+    deallocate(resolution%encoded)
     deallocate(resolution%pool_head)
+    deallocate(resolution%pool_cur)
+    deallocate(resolution%pool_tail)
     resolution%secret = 0
   endsubroutine kill_resolution
 end module
