@@ -11,13 +11,15 @@ module resolve_mod
   use particle_system_mod, only: particle_type
   use accounting_mod
   implicit none
+ integer(i8b), parameter :: MAX_GOOD_LENGTH = 10000
   type resolution_type
     integer(i8b):: remaining_nnb  !< nnb that remains in encoded_impacts
     integer(i8b):: secret !< used to encode the raylist id and impact id
     integer(i8b), allocatable:: encoded(:)
-    integer(i8b), allocatable:: plink(:)
-    integer(i8b),allocatable :: good(:)
-    integer(i8b),allocatable :: good_pindx(:)
+    integer(i8b), allocatable:: plink_r(:)  !< circular link on the same particle, reversed time order
+    integer(i8b), allocatable:: plink(:)  !< circular link on the same particle, in time order
+    integer(i8b) :: good(MAX_GOOD_LENGTH)
+    integer(i8b) :: good_pindx(MAX_GOOD_LENGTH)
     logical(i1b), allocatable :: par_in_good(:)
     integer(i8b):: good_nnb
     integer(i8b),allocatable :: pool_head(:)
@@ -85,9 +87,8 @@ contains
      resolution%pool_cur = resolution%pool_head
 
      resolution%secret = size(raylists, 1) + 1
-     allocate(resolution%good(10000))
-     allocate(resolution%good_pindx(10000))
      allocate(resolution%encoded(total_nnb))
+     allocate(resolution%plink_r(total_nnb))
      allocate(resolution%plink(total_nnb))
      ! create the link list of intersections with same particles
      allocate(pindx(total_nnb))
@@ -101,12 +102,34 @@ contains
        enddo
      enddo
 
+     ! first categroy by the particle ids
+     ! note that mgrrnk is stable, thus the sorted array
+     ! preserves the time ordering
      call mrgrnk(pindx, indexx)
 
-     print *, 'sorted'
+     ! create the reversed link
      first = indexx(total_nnb)
      last =indexx(total_nnb)
      do j = total_nnb - 1, 1, -1
+       this = indexx(j)
+       if (pindx(this) /= pindx(last)) then
+         resolution%plink_r(last) = first
+         first = this
+         last = this
+       else
+         if (this >= last) then
+           stop "sort subroutine unstable!"
+         endif
+         resolution%plink_r(last) = this
+         last = this
+       endif
+     enddo
+     resolution%plink_r(last) = first
+
+     ! create the forward link
+     first = indexx(1)
+     last =indexx(1)
+     do j = 2, total_nnb, 1
        this = indexx(j)
        if (pindx(this) /= pindx(last)) then
          resolution%plink(last) = first
@@ -118,28 +141,22 @@ contains
        endif
      enddo
      resolution%plink(last) = first
-     print *, 'linked'
-     if (.False.) then
-     !$OMP PARALLEL DO PRIVATE(first, this)
+     print *, 'particle links created'
+
      do j = 1, total_nnb, 1
-       first = resolution%plink(j)
-       this = resolution%plink(j)
-       last = 0
-       do while (.True.)
-         if(pindx(j) /= pindx(this)) then
-             stop 'failed pindx list check'
-         endif
-         this = resolution%plink(this)
-         last = last + 1
-         if(this == first) exit
-       enddo
+       if (resolution%plink_r(j) == 0) then
+          stop "plink_r failed"
+       endif
      enddo
-     !$OMP END PARALLEL DO
-     endif
+    
+     do j = 1, total_nnb, 1
+       if (resolution%plink(j) == 0) then
+          stop "plink failed"
+       endif
+     enddo
      deallocate(pindx)
      deallocate(indexx)
 
-     print *, 'checked'
      resolution%good_nnb = 0
      resolution%remaining_nnb = total_nnb
   end subroutine prepare_resolution 
@@ -167,7 +184,7 @@ contains
      type (intersection_type) :: a, c
      logical(i4b) :: good_candidate
      integer(i4b) :: rayln, raylm
-     integer(i8b) :: j, k, jmpact, this, first
+     integer(i8b) :: j, k, jmpact, this, first, next, prev
      integer(i8b) :: counter
      integer(i8b) :: c_pindx
      call timer_resume(AV, 2)
@@ -191,7 +208,7 @@ contains
            counter = 0
            !print *, 'candidate', c%pindx, c%rayn, c%t
            first = resolution%pool_cur(rayln)
-           this = resolution%plink(first)
+           this = resolution%plink_r(first)
            do while (this /= first)
               if(this > first) then
                  exit ! because the link list is reverse sorted
@@ -211,14 +228,21 @@ contains
                  good_candidate = .False.
                  exit
               endif
-              this = resolution%plink(this)
+              this = resolution%plink_r(this)
               counter = counter + 1
            enddo
         endif
         call timer_pause(AV, 4)
         if (good_candidate) then
           good_tail = good_tail + 1
-          resolution%good(good_tail) = resolution%pool_cur(rayln)
+          this = resolution%pool_cur(rayln)
+          next = resolution%plink(this)
+          prev = resolution%plink_r(this)
+          resolution%plink(prev) = next
+          resolution%plink_r(next) = prev
+          resolution%plink(this) = this
+          resolution%plink_r(this) = this
+          resolution%good(good_tail) = this
           resolution%par_in_good(c_pindx) = .True.
           resolution%good_pindx(good_tail) = c_pindx
           resolution%pool_cur(rayln) = resolution%pool_cur(rayln) + 1
@@ -248,8 +272,7 @@ contains
   endsubroutine resolution_get_resolved_intersection
   subroutine kill_resolution(resolution)
     type(resolution_type), intent(inout):: resolution
-    deallocate(resolution%good)
-    deallocate(resolution%good_pindx)
+    deallocate(resolution%plink_r)
     deallocate(resolution%plink)
     deallocate(resolution%encoded)
     deallocate(resolution%pool_head)
