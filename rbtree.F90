@@ -6,12 +6,12 @@ module  rbtree_mod
 use myf03_mod
 integer(i8b), parameter :: MAX_LENGTH = 1000
 type rbtree_type
-   integer(i8b) :: value(MAX_LENGTH)  !< the task ids
-   integer(i8b) :: key(MAX_LENGTH)  !< the hungriness of the tasks
-   integer(i1b) :: color(MAX_LENGTH) !< preserved for r/b tree
-   integer(i8b) :: left(MAX_LENGTH)  !< left child
-   integer(i8b) :: right(MAX_LENGTH) !< right child
-   integer(i8b) :: parent(MAX_LENGTH) !< parent
+   integer(i8b), allocatable :: value(:)  !< the task ids
+   integer(i8b), allocatable :: key(:)  !< the hungriness of the tasks
+   integer(i1b), allocatable :: color(:) !< preserved for r/b tree
+   integer(i8b), allocatable :: left(:)  !< left child
+   integer(i8b), allocatable :: right(:) !< right child
+   integer(i8b), allocatable :: parent(:) !< parent
    integer(i8b) :: leftmost     !< leftmost element, the one to be ejected
    integer(i8b) :: ejected      !< the ejected task, to be returned by rbtree_return
    integer(i8b) :: length       !< number of used storage elements
@@ -20,8 +20,15 @@ endtype rbtree_type
 
 contains
   
-  subroutine rbtree_prepare(rbtree)
+  subroutine rbtree_prepare(rbtree, max_length)
     type(rbtree_type), intent(inout) :: rbtree
+    integer(i8b), intent(in) :: max_length
+    allocate(rbtree%value(max_length))
+    allocate(rbtree%key(max_length))
+    allocate(rbtree%color(max_length))
+    allocate(rbtree%left(max_length))
+    allocate(rbtree%right(max_length))
+    allocate(rbtree%parent(max_length))
     rbtree%value = 0
     rbtree%color = 0
     rbtree%left = 0
@@ -167,6 +174,13 @@ contains
   endsubroutine rbtree_return
 
   subroutine rbtree_kill(rbtree)
+    type(rbtree_type), intent(inout) :: rbtree
+    deallocate(rbtree%value)
+    deallocate(rbtree%key)
+    deallocate(rbtree%color)
+    deallocate(rbtree%left)
+    deallocate(rbtree%right)
+    deallocate(rbtree%parent)
   endsubroutine
 
 
@@ -177,7 +191,7 @@ use rbtree_mod
   type(rbtree_type) :: rbtree
   integer(i8b):: key, value
   integer(i4b):: i
-  call rbtree_prepare(rbtree)
+  call rbtree_prepare(rbtree, 1000)
   call rbtree_insert(rbtree, 5, 1)
   call rbtree_insert(rbtree, 1, 2)
   call rbtree_insert(rbtree, 0, 3)
