@@ -166,15 +166,16 @@ contains
      type(resolution_type), intent(inout) :: resolution
      integer(i8b) ::  j, k
      integer(i4b) :: i
-     j = 0
-     do i = 1, size(raylists, 1)
-       do k = 1, raylists(i)%nnb
-         j = j + 1
-         resolution%good(j) = encode(resolution, i, k)
-       enddo
+     j = resolution%remaining_nnb 
+     j = size(resolution%encoded, 1) - resolution%remaining_nnb + 1
+     do k = 1, MAX_GOOD_LENGTH
+         resolution%good(k) = k + j - 1
+         if(k + j -1 == size(resolution%encoded, 1) .or. k == MAX_GOOD_LENGTH) then 
+            exit
+         endif
      enddo
-     resolution%good_nnb = j
-     resolution%remaining_nnb = 0
+     resolution%good_nnb = k
+     resolution%remaining_nnb = resolution%remaining_nnb - k
   end subroutine resolve_all
 
   subroutine resolve_more(resolution, raylists)
@@ -187,7 +188,6 @@ contains
      integer(i8b) :: j, k, jmpact, this, first, next, prev
      integer(i8b) :: counter
      integer(i8b) :: c_pindx
-     call timer_resume(AV, 2)
      good_tail = 0
      !do rayln = 1, size(raylists, 1)
      !  print *, resolution%pool_head(rayln), resolution%pool_cur(rayln), resolution%pool_tail(rayln)
@@ -247,7 +247,7 @@ contains
           resolution%good_pindx(good_tail) = c_pindx
           resolution%pool_cur(rayln) = resolution%pool_cur(rayln) + 1
         endif
-        if (good_tail == 10000) then 
+        if (good_tail == MAX_GOOD_LENGTH) then 
           exit
         endif
      enddo
@@ -257,7 +257,6 @@ contains
      enddo
      resolution%good_nnb = good_tail
      resolution%remaining_nnb = resolution%remaining_nnb - good_tail
-     call timer_pause(AV, 2)
   end subroutine resolve_more
 
   subroutine resolution_get_resolved_intersection(resolution, raylists, j, intersection)
