@@ -53,7 +53,7 @@ RATES = \
 		rates/atomic_rates.o \
 		$(NULL)
 
-OBJS =  myf03.o mt19937.o m_mrgrnk.o \
+OBJS =  myf03.o mt19937.o m_mrgrnk.o rbtree.o \
 		$(RATES) \
 		gadget_constants.o physical_constants.o cosmology.o \
 		b2cd.o spectra.o \

@@ -186,22 +186,22 @@ contains
 
 endmodule rbtree_mod
 
-program rbtree_test
-use rbtree_mod
-  type(rbtree_type) :: rbtree
-  integer(i8b):: key, value
-  integer(i4b):: i
-  call rbtree_prepare(rbtree, 1000)
-  call rbtree_insert(rbtree, 5, 1)
-  call rbtree_insert(rbtree, 1, 2)
-  call rbtree_insert(rbtree, 0, 3)
-  call rbtree_insert(rbtree, 2, 4)
-  call rbtree_insert(rbtree, 3, 5)
-  call rbtree_print(rbtree)
-  do i = 1, 5
-  call rbtree_eject(rbtree, key, value)
-  call rbtree_print(rbtree)
-  call rbtree_return(rbtree, key+ 10, value)
-  call rbtree_print(rbtree)
-  enddo
-end program
+!program rbtree_test
+!use rbtree_mod
+!  type(rbtree_type) :: rbtree
+!  integer(i8b):: key, value
+!  integer(i4b):: i
+!  call rbtree_prepare(rbtree, 1000)
+!  call rbtree_insert(rbtree, 5, 1)
+!  call rbtree_insert(rbtree, 1, 2)
+!  call rbtree_insert(rbtree, 0, 3)
+!  call rbtree_insert(rbtree, 2, 4)
+!  call rbtree_insert(rbtree, 3, 5)
+!  call rbtree_print(rbtree)
+!  do i = 1, 5
+!  call rbtree_eject(rbtree, key, value)
+!  call rbtree_print(rbtree)
+!  call rbtree_return(rbtree, key+ 10, value)
+!  call rbtree_print(rbtree)
+!  enddo
+!end program

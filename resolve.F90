@@ -6,6 +6,7 @@
 module resolve_mod
   
   use myf03_mod
+  use rbtree_mod, only: rbtree_type, rbtree_prepare, rbtree_kill, rbtree_eject, rbtree_return, rbtree_insert
   use m_mrgrnk, only: mrgrnk
   use raylist_mod, only: intersection_type, raylist_type
   use particle_system_mod, only: particle_type
