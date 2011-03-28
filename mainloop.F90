@@ -223,7 +223,7 @@ contains
            !$OMP DO SCHEDULE(DYNAMIC, 1)
            do j = 1, resolution%good_nnb
              call resolution_get_resolved_intersection(resolution, raylists, j, intersection)
-           !  print *, 'inte', intersection%pindx, intersection%rayn, intersection%t
+!             print *, resolution%good_nnb, 'inte', intersection%pindx, intersection%rayn, intersection%t
 !             print *, active_rays(intersection%rayn)%emit_time, psys%par(intersection%pindx)%lasthit
              call update_intersection(intersection, psys%par,psys%box, localAVs(TID))
            enddo 

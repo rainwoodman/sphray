@@ -6,7 +6,7 @@
 module resolve_mod
   
   use myf03_mod
-  use rbtree_mod, only: rbtree_type, rbtree_prepare, rbtree_kill, rbtree_eject, rbtree_return, rbtree_insert
+!  use rbtree_mod, only: rbtree_type, rbtree_prepare, rbtree_kill, rbtree_eject, rbtree_return, rbtree_insert, rbtree_print
   use m_mrgrnk, only: mrgrnk
   use raylist_mod, only: intersection_type, raylist_type
   use particle_system_mod, only: particle_type
@@ -26,6 +26,7 @@ module resolve_mod
     integer(i8b),allocatable :: pool_head(:)
     integer(i8b),allocatable :: pool_cur(:)
     integer(i8b),allocatable :: pool_tail(:)
+    integer(i8b),allocatable :: priority(:)
   end type resolution_type
 contains
 
@@ -74,6 +75,7 @@ contains
      allocate(resolution%pool_head(size(raylists, 1)))
      allocate(resolution%pool_cur(size(raylists, 1)))
      allocate(resolution%pool_tail(size(raylists, 1)))
+     allocate(resolution%priority(size(raylists, 1)))
      total_nnb = 0
      do rayln = 1, size(raylists, 1)
        total_nnb = total_nnb + raylists(rayln)%nnb
@@ -86,6 +88,10 @@ contains
        resolution%pool_tail(rayln) = resolution%pool_tail(rayln - 1) + raylists(rayln)%nnb
      enddo
      resolution%pool_cur = resolution%pool_head
+
+     do rayln = 1, size(raylists, 1), 1
+        resolution%priority(rayln) = resolution%pool_cur(rayln) - resolution%pool_tail(rayln)
+     enddo
 
      resolution%secret = size(raylists, 1) + 1
      allocate(resolution%encoded(total_nnb))
@@ -160,6 +166,8 @@ contains
 
      resolution%good_nnb = 0
      resolution%remaining_nnb = total_nnb
+     total_nnb = size(raylists, 1)
+
   end subroutine prepare_resolution 
 
   subroutine resolve_all(resolution, raylists)
@@ -187,13 +195,20 @@ contains
      logical(i4b) :: good_candidate
      integer(i4b) :: rayln, raylm
      integer(i8b) :: j, k, jmpact, this, first, next, prev
+     integer(i8b) :: key, value
      integer(i8b) :: counter
      integer(i8b) :: c_pindx
+     integer(i8b) :: handled
+     integer(i8b) :: rayindex(size(raylists, 1))
      good_tail = 0
      !do rayln = 1, size(raylists, 1)
      !  print *, resolution%pool_head(rayln), resolution%pool_cur(rayln), resolution%pool_tail(rayln)
      !enddo
-     do rayln = 1, size(resolution%pool_cur), 1
+     !call mrgrnk(resolution%priority, rayindex)
+     
+     !print *, rayindex(1), resolution%priority(rayindex(1))
+     handled = 1
+     do rayln = 1, size(raylists, 1), 1
         if (resolution%pool_cur(rayln) > resolution%pool_tail(rayln)) then 
             cycle
         endif
@@ -226,6 +241,7 @@ contains
               !print *, 'this', this, 'cur', resolution%pool_cur(raylm)
               if(this >= resolution%pool_cur(raylm)) then
               !  print *, 'rejected'
+!                 resolution%priority(raylm) = resolution%priority(raylm) + rayindex(rayln)
                  good_candidate = .False.
                  exit
               endif
@@ -247,6 +263,8 @@ contains
           resolution%par_in_good(c_pindx) = .True.
           resolution%good_pindx(good_tail) = c_pindx
           resolution%pool_cur(rayln) = resolution%pool_cur(rayln) + 1
+          resolution%priority(rayln) = resolution%pool_cur(rayln) - resolution%pool_tail(rayln)
+!          print *, 'taken', rayln, '1', resolution%pool_cur(1) - resolution%pool_tail(1)
         endif
         if (good_tail == MAX_GOOD_LENGTH) then 
           exit
@@ -273,6 +291,7 @@ contains
   subroutine kill_resolution(resolution)
     type(resolution_type), intent(inout):: resolution
     deallocate(resolution%plink_r)
+    deallocate(resolution%priority)
     deallocate(resolution%plink)
     deallocate(resolution%encoded)
     deallocate(resolution%pool_head)
