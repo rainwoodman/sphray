@@ -71,10 +71,12 @@ contains
 
      this = rbtree%root
 
+     print *, 'insert', new, 'key',  key
      do while(this /= 0)
        parent = this
        if ( key < rbtree%key(this) ) then
           this = rbtree%left(this)
+          print *, 'left', this
           if (this == 0) then
              rbtree%left(parent) = new
              rbtree%parent(new) = parent
@@ -85,6 +87,7 @@ contains
           endif
        else
           this = rbtree%right(this)
+          print *, 'right', this
           if (this == 0) then
              rbtree%right(parent) = new
              rbtree%parent(new) = parent
@@ -99,16 +102,26 @@ contains
   subroutine rbtree_print(rbtree)
     type(rbtree_type), intent(inout) :: rbtree
     integer(i8b) :: parent, this, new
+    integer(i8b) :: c, lastkey
     if (rbtree%length == 0) then
       print *, 'empty tree'
       return
     endif
     print *, 'leftmostid', rbtree%leftmost, 'rootid', rbtree%root
+
+    c = 0
+    lastkey = -1
     this = rbtree%root
     do while(this /= 0)
        if(rbtree%left(this) == 0) then
-         print *, 'node', this, rbtree%key(this)
+!         print *, 'node', this, rbtree%key(this)
+         if(lastkey > rbtree%key(this)) then
+           print *, 'at', this, 'lastkey', lastkey, 'key', rbtree%key(this)
+           stop 'tree sanity check failed'
+         endif
+         lastkey = rbtree%key(this)
          this = rbtree%right(this)
+         c = c + 1
          cycle
        endif
        next = rbtree%left(this)
@@ -121,13 +134,26 @@ contains
           cycle
        else
           rbtree%right(next) = 0
-         print *, 'node', this, rbtree%key(this)
+!          print *, 'node', this, rbtree%key(this)
+          c = c + 1
           this = rbtree%right(this)
+         if(lastkey > rbtree%key(this)) then
+           stop 'tree sanity check failed'
+         endif
+           lastkey = rbtree%key(this)
           cycle
        endif
     enddo
+    print *, 'nodes', c
   endsubroutine
 
+  subroutine rbtree_peek(rbtree, key, value)
+    type(rbtree_type), intent(inout) :: rbtree
+    integer(i8b),intent(out) :: key
+    integer(i8b),intent(out) :: value
+    key = rbtree%key(rbtree%leftmost)
+    value = rbtree%value(rbtree%leftmost)
+  endsubroutine rbtree_peek
   subroutine rbtree_eject(rbtree, key, value)
     !< select the most hungry task in the tree,
     !< returns the hungriness in 'key', and the value stored in value
@@ -136,23 +162,28 @@ contains
     integer(i8b),intent(out) :: key
     integer(i8b),intent(out) :: value
     integer(i8b) :: parent, ejected, new
+    if(rbtree%leftmost == 0) then
+       stop "can't eject from an empty tree"
+    endif
     ejected = rbtree%leftmost
     print *, 'ejected', ejected
     if(ejected == rbtree%root) then
       new = rbtree%right(ejected)
       rbtree%root = new
       rbtree%leftmost = new
-      rbtree%parent(new) = 0
+      if(new /= 0) then
+         rbtree%parent(new) = 0
+      endif
     else
       parent = rbtree%parent(ejected)
       new = rbtree%right(ejected)
       rbtree%left(parent) = new
-      rbtree%parent(new) = parent
       if(new == 0) then
        ! if already a leaf ejected, the parent is the new leftmost
         rbtree%leftmost = parent
       else 
         rbtree%leftmost = new
+        rbtree%parent(new) = parent
       endif
     endif
     rbtree%left(ejected) = 0
@@ -160,6 +191,9 @@ contains
     rbtree%parent(ejected) = 0
     rbtree%color(ejected) = 0
     rbtree%ejected = ejected
+    if(rbtree%left(rbtree%leftmost) /= 0) then
+      stop 'leftmost check failed'
+    endif
     key = rbtree%key(ejected)
     value = rbtree%value(ejected)
   endsubroutine rbtree_eject
@@ -170,7 +204,12 @@ contains
     type(rbtree_type), intent(inout) :: rbtree
     integer(i8b),intent(in) :: key
     integer(i8b),intent(in) :: value
+    if(rbtree%ejected == 0) then
+      stop "didn't eject"
+    endif
     call rbtree_insert0(rbtree, key, value, rbtree%ejected)
+    print *, 'returned', rbtree%ejected
+    rbtree%ejected = 0
   endsubroutine rbtree_return
 
   subroutine rbtree_kill(rbtree)
