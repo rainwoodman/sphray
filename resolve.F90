@@ -15,7 +15,7 @@ module resolve_mod
  integer(i8b), parameter :: MAX_GOOD_LENGTH = 10000
   type resolution_type
     integer(i8b):: remaining_nnb  !< nnb that remains in encoded_impacts
-    integer(i8b):: secret !< used to encode the raylist id and impact id
+    integer(i8b):: secret!< encoding rayln and impact, fortran has no pointer
     integer(i8b), allocatable:: encoded(:)
     integer(i8b), allocatable:: plink_r(:)  !< circular link on the same particle, reversed time order
     integer(i8b), allocatable:: plink(:)  !< circular link on the same particle, in time order
@@ -28,7 +28,6 @@ module resolve_mod
     integer(i8b),allocatable :: pool_head(:)
     integer(i8b),allocatable :: pool_cur(:)
     integer(i8b),allocatable :: pool_tail(:)
-    integer(i8b),allocatable :: priority(:)
   end type resolution_type
 contains
 
@@ -120,7 +119,7 @@ contains
      type(raylist_type), intent(in), allocatable :: raylists(:)
      type(particle_type), intent(in), allocatable :: par(:)
      type(resolution_type), intent(inout) :: resolution
-     integer(i8b),allocatable :: pindx(:), indexx(:)
+     integer(i8b),allocatable :: pindx(:), indexx(:), rayn(:)
      integer(i8b) :: total_nnb,  j, this, last, first, impact
      integer(i4b) :: rayln
      allocate(resolution%par_in_good(size(par, 1)))
@@ -130,7 +129,6 @@ contains
      allocate(resolution%pool_head(size(raylists, 1)))
      allocate(resolution%pool_cur(size(raylists, 1)))
      allocate(resolution%pool_tail(size(raylists, 1)))
-     allocate(resolution%priority(size(raylists, 1)))
      total_nnb = 0
      do rayln = 1, size(raylists, 1)
        total_nnb = total_nnb + raylists(rayln)%nnb
@@ -144,16 +142,15 @@ contains
      enddo
      resolution%pool_cur = resolution%pool_head
 
-     do rayln = 1, size(raylists, 1), 1
-        resolution%priority(rayln) = resolution%pool_cur(rayln) - resolution%pool_tail(rayln)
-     enddo
-
      resolution%secret = size(raylists, 1) + 1
      allocate(resolution%encoded(total_nnb))
      allocate(resolution%plink_r(total_nnb))
      allocate(resolution%plink(total_nnb))
+     allocate(resolution%rlink(total_nnb))
+     allocate(resolution%rlink_r(total_nnb))
      ! create the link list of intersections with same particles
      allocate(pindx(total_nnb))
+     allocate(rayn(total_nnb))
      allocate(indexx(total_nnb))
      j = 0
      do rayln = 1, size(raylists, 1)
@@ -161,6 +158,7 @@ contains
          j = j + 1
          resolution%encoded(j) = encode(resolution, rayln, impact)
          pindx(j) = raylists(rayln)%intersections(impact)%pindx
+         rayn(j) = raylists(rayln)%intersections(impact)%rayn
        enddo
      enddo
 
@@ -170,8 +168,11 @@ contains
      call mrgrnk(pindx, indexx)
      call build_circular_list(pindx, indexx, resolution%plink, resolution%plink_r)
 
-     deallocate(pindx)
+     call mrgrnk(rayn, indexx)
+     call build_circular_list(rayn, indexx, resolution%rlink, resolution%rlink_r)
      deallocate(indexx)
+     deallocate(pindx)
+     deallocate(rayn)
 
      resolution%good_nnb = 0
      resolution%remaining_nnb = total_nnb
@@ -213,9 +214,6 @@ contains
      !do rayln = 1, size(raylists, 1)
      !  print *, resolution%pool_head(rayln), resolution%pool_cur(rayln), resolution%pool_tail(rayln)
      !enddo
-     !call mrgrnk(resolution%priority, rayindex)
-     
-     !print *, rayindex(1), resolution%priority(rayindex(1))
      handled = 1
      do rayln = 1, size(raylists, 1), 1
         if (resolution%pool_cur(rayln) > resolution%pool_tail(rayln)) then 
@@ -250,7 +248,6 @@ contains
               !print *, 'this', this, 'cur', resolution%pool_cur(raylm)
               if(this >= resolution%pool_cur(raylm)) then
               !  print *, 'rejected'
-!                 resolution%priority(raylm) = resolution%priority(raylm) + rayindex(rayln)
                  good_candidate = .False.
                  exit
               endif
@@ -272,7 +269,6 @@ contains
           resolution%par_in_good(c_pindx) = .True.
           resolution%good_pindx(good_tail) = c_pindx
           resolution%pool_cur(rayln) = resolution%pool_cur(rayln) + 1
-          resolution%priority(rayln) = resolution%pool_cur(rayln) - resolution%pool_tail(rayln)
 !          print *, 'taken', rayln, '1', resolution%pool_cur(1) - resolution%pool_tail(1)
         endif
         if (good_tail == MAX_GOOD_LENGTH) then 
@@ -299,8 +295,9 @@ contains
   endsubroutine resolution_get_resolved_intersection
   subroutine kill_resolution(resolution)
     type(resolution_type), intent(inout):: resolution
+    deallocate(resolution%rlink_r)
+    deallocate(resolution%rlink)
     deallocate(resolution%plink_r)
-    deallocate(resolution%priority)
     deallocate(resolution%plink)
     deallocate(resolution%encoded)
     deallocate(resolution%pool_head)
