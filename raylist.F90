@@ -37,7 +37,6 @@ implicit none
       integer(i4b) :: rayn    !< ray index within activa_rays
       real :: b          !< impact parameter
       real :: d          !< distance along ray
-      real :: dl         !< path length
       real(r8b):: t      !< time of impact, useful in race-resolving
    end type intersection_type
  
