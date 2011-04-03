@@ -199,7 +199,7 @@ contains
 
          ! this section resolves the races and causalities
          call timer_resume(AV, 6)
-         call prepare_resolution(resolution, raylists, psys%par)
+         call prepare_resolution(resolution, raylists, active_rays, psys%par)
          call timer_pause(AV, 6)
            small_count = 0
            good_nnb_sum = 0

@@ -8,6 +8,7 @@ module resolve_mod
   use myf03_mod
 !  use rbtree_mod, only: rbtree_type, rbtree_prepare, rbtree_kill, rbtree_eject, rbtree_return, rbtree_insert, rbtree_print
   use m_mrgrnk, only: mrgrnk
+  use ray_mod, only: src_ray_type
   use raylist_mod, only: intersection_type, raylist_type
   use particle_system_mod, only: particle_type
   use accounting_mod
@@ -19,15 +20,12 @@ module resolve_mod
     integer(i8b), allocatable:: encoded(:)
     integer(i8b), allocatable:: plink_r(:)  !< circular link on the same particle, reversed time order
     integer(i8b), allocatable:: plink(:)  !< circular link on the same particle, in time order
-    integer(i8b), allocatable:: rlink_r(:)  !< circular link on the same ray, reversed time order
-    integer(i8b), allocatable:: rlink(:)  !< circular link on the same ray, in time order
+    integer(i8b),allocatable :: rhead(:)
+    integer(i8b), allocatable:: rlink(:)  !< link on the same ray, in time order
     integer(i8b) :: good(MAX_GOOD_LENGTH)
     integer(i8b) :: good_pindx(MAX_GOOD_LENGTH)
     logical(i1b), allocatable :: par_in_good(:)
     integer(i8b):: good_nnb
-    integer(i8b),allocatable :: pool_head(:)
-    integer(i8b),allocatable :: pool_cur(:)
-    integer(i8b),allocatable :: pool_tail(:)
   end type resolution_type
 contains
 
@@ -61,17 +59,53 @@ contains
      logical(i4b) :: r
      r = a%t > b%t .and. race(a,b)
   end function cconflict
+  subroutine build_list(key, indexx, link, head)
+     integer(i8b),allocatable, intent(inout) :: key(:), indexx(:), link(:)
+     integer(i8b),allocatable, optional, intent(inout):: head(:)
+     integer(i8b) :: first, last, total_nnb, j, this
+     total_nnb = size(key, 1)
+     first = indexx(1)
+     last =indexx(1)
+     if (present(head)) then
+       head(:) = 0
+       head(key(first)) = first
+     endif
+     do j = 2, total_nnb, 1
+       this = indexx(j)
+       if (key(this) /= key(last)) then
+         if (present(head)) then
+         head(key(this)) = this
+         endif
+         link(last) = 0
+         first = this
+         last = this
+       else
+         link(last) = this
+         last = this
+       endif
+     enddo
+     link(last) = 0
+     print *, 'forward link created'
+    
+  endsubroutine build_list
 
-  subroutine build_circular_list(key, indexx, link, link_r)
+  subroutine build_circular_list(key, indexx, link, link_r, head, tail)
      integer(i8b),allocatable, intent(inout) :: key(:), indexx(:), link(:), link_r(:)
+     integer(i8b),allocatable, optional, intent(inout):: head(:), tail(:)
      integer(i8b) :: first, last, total_nnb, j, this
      total_nnb = size(key, 1)
      ! create the reversed link
      first = indexx(total_nnb)
      last =indexx(total_nnb)
+     if (present(tail)) then
+       tail(key(last)) = last
+     endif
      do j = total_nnb - 1, 1, -1
        this = indexx(j)
        if (key(this) /= key(last)) then
+         if (present(tail)) then
+           tail(key(this)) = this
+         endif
          link_r(last) = first
          first = this
          last = this
@@ -88,9 +122,15 @@ contains
      ! create the forward link
      first = indexx(1)
      last =indexx(1)
+     if (present(head)) then
+       head(key(first)) = first
+     endif
      do j = 2, total_nnb, 1
        this = indexx(j)
        if (key(this) /= key(last)) then
+         if (present(head)) then
+         head(key(this)) = this
+         endif
          link(last) = first
          first = this
          last = this
@@ -113,12 +153,13 @@ contains
           stop "plink failed"
        endif
      enddo
-
   endsubroutine build_circular_list
-  subroutine prepare_resolution(resolution, raylists, par)
+  subroutine prepare_resolution(resolution, raylists, ray, par)
      type(raylist_type), intent(in), allocatable :: raylists(:)
      type(particle_type), intent(in), allocatable :: par(:)
+     type(src_ray_type), intent(in), allocatable :: ray(:)
      type(resolution_type), intent(inout) :: resolution
+     real(r8b), allocatable :: t(:)
      integer(i8b),allocatable :: pindx(:), indexx(:), rayn(:)
      integer(i8b) :: total_nnb,  j, this, last, first, impact
      integer(i4b) :: rayln
@@ -126,40 +167,40 @@ contains
      do j = 1, size(par, 1), 1
         resolution%par_in_good(j) = .False.
      enddo
-     allocate(resolution%pool_head(size(raylists, 1)))
-     allocate(resolution%pool_cur(size(raylists, 1)))
-     allocate(resolution%pool_tail(size(raylists, 1)))
+
      total_nnb = 0
      do rayln = 1, size(raylists, 1)
        total_nnb = total_nnb + raylists(rayln)%nnb
      enddo
      
-     resolution%pool_head(1) = 1
-     resolution%pool_tail(1) = raylists(1)%nnb
-     do rayln = 2, size(raylists, 1)
-       resolution%pool_head(rayln) = resolution%pool_head(rayln - 1) + raylists(rayln - 1)%nnb
-       resolution%pool_tail(rayln) = resolution%pool_tail(rayln - 1) + raylists(rayln)%nnb
-     enddo
-     resolution%pool_cur = resolution%pool_head
-
      resolution%secret = size(raylists, 1) + 1
      allocate(resolution%encoded(total_nnb))
      allocate(resolution%plink_r(total_nnb))
      allocate(resolution%plink(total_nnb))
      allocate(resolution%rlink(total_nnb))
-     allocate(resolution%rlink_r(total_nnb))
+     allocate(resolution%rhead(size(ray, 1)))
      ! create the link list of intersections with same particles
      allocate(pindx(total_nnb))
      allocate(rayn(total_nnb))
      allocate(indexx(total_nnb))
+     allocate(t(total_nnb))
      j = 0
      do rayln = 1, size(raylists, 1)
        do impact = 1, raylists(rayln)%nnb
          j = j + 1
          resolution%encoded(j) = encode(resolution, rayln, impact)
-         pindx(j) = raylists(rayln)%intersections(impact)%pindx
-         rayn(j) = raylists(rayln)%intersections(impact)%rayn
+         t(j) = raylists(rayln)%intersections(impact)%t
        enddo
+     enddo
+
+     call mrgrnk(t, indexx)
+     resolution%encoded = resolution%encoded(indexx)
+     t = t(indexx)
+
+     do j= 1, total_nnb, 1
+       call decode(resolution, resolution%encoded(j), rayln, impact)
+       pindx(j) = raylists(rayln)%intersections(impact)%pindx
+       rayn(j) = raylists(rayln)%intersections(impact)%rayn
      enddo
 
      ! first categroy by the particle ids
@@ -169,10 +210,11 @@ contains
      call build_circular_list(pindx, indexx, resolution%plink, resolution%plink_r)
 
      call mrgrnk(rayn, indexx)
-     call build_circular_list(rayn, indexx, resolution%rlink, resolution%rlink_r)
+     call build_list(rayn, indexx, resolution%rlink, resolution%rhead)
      deallocate(indexx)
      deallocate(pindx)
      deallocate(rayn)
+     deallocate(t)
 
      resolution%good_nnb = 0
      resolution%remaining_nnb = total_nnb
@@ -203,23 +245,22 @@ contains
      integer(i8b) :: good_tail
      type (intersection_type) :: a, c
      logical(i4b) :: good_candidate
-     integer(i4b) :: rayln, raylm
-     integer(i8b) :: j, k, jmpact, this, first, next, prev
+     integer(i4b) :: rayln, raylm, rayn
+     integer(i8b) :: j, k, jmpact, this, first, next, prev, impact
      integer(i8b) :: key, value
      integer(i8b) :: counter
      integer(i8b) :: c_pindx
      integer(i8b) :: handled
      integer(i8b) :: rayindex(size(raylists, 1))
      good_tail = 0
-     !do rayln = 1, size(raylists, 1)
-     !  print *, resolution%pool_head(rayln), resolution%pool_cur(rayln), resolution%pool_tail(rayln)
-     !enddo
-     handled = 1
-     do rayln = 1, size(raylists, 1), 1
-        if (resolution%pool_cur(rayln) > resolution%pool_tail(rayln)) then 
+
+     do rayn = 1, size(resolution%rhead, 1), 1
+        if (resolution%rhead(rayn) == 0 ) then 
             cycle
         endif
-        c_pindx = raylists(rayln)%intersections(resolution%pool_cur(rayln) - resolution%pool_head(rayln) + 1)%pindx
+        this = resolution%rhead(rayn)
+        call decode(resolution, resolution%encoded(this), rayln, impact)
+        c_pindx = raylists(rayln)%intersections(impact)%pindx
         good_candidate = .True.
         call timer_resume(AV, 3)
         if (resolution%par_in_good(c_pindx)) then
@@ -230,45 +271,31 @@ contains
         if (good_candidate) then
            counter = 0
            !print *, 'candidate', c%pindx, c%rayn, c%t
-           first = resolution%pool_cur(rayln)
-           this = resolution%plink_r(first)
-           do while (this /= first)
-              if(this > first) then
-                 exit ! because the link list is reverse sorted
-                      ! if 'this' > 'first', first is already the
-                      ! earliest impact on the particle
-                      ! we can move it wherever we want
-              endif
-              call decode(resolution, resolution%encoded(this), raylm, jmpact)
-              !a = raylists(raylm)%intersections(jmpact)
-              !print *, '  compare', a%pindx, a%rayn, a%t
-              if(raylm >= rayln) then
-                 stop "can't happen. an earlier intersection must be in an earlier ray"
-              endif
-              !print *, 'this', this, 'cur', resolution%pool_cur(raylm)
-              if(this >= resolution%pool_cur(raylm)) then
-              !  print *, 'rejected'
-                 good_candidate = .False.
-                 exit
-              endif
-              this = resolution%plink_r(this)
-              counter = counter + 1
-           enddo
+           prev = resolution%plink_r(this)
+           if (prev < this) then
+             ! if this is not the first update in the particle link list
+             good_candidate = .False.
+           endif
         endif
         call timer_pause(AV, 4)
         if (good_candidate) then
           good_tail = good_tail + 1
-          this = resolution%pool_cur(rayln)
+          ! remove this from the particle link list
           next = resolution%plink(this)
           prev = resolution%plink_r(this)
           resolution%plink(prev) = next
           resolution%plink_r(next) = prev
           resolution%plink(this) = this
           resolution%plink_r(this) = this
+
+
+          ! rmeove this from the ray link list
+          next = resolution%rlink(this)
+          resolution%rhead(rayn) = next
+
           resolution%good(good_tail) = this
           resolution%par_in_good(c_pindx) = .True.
           resolution%good_pindx(good_tail) = c_pindx
-          resolution%pool_cur(rayln) = resolution%pool_cur(rayln) + 1
 !          print *, 'taken', rayln, '1', resolution%pool_cur(1) - resolution%pool_tail(1)
         endif
         if (good_tail == MAX_GOOD_LENGTH) then 
@@ -295,14 +322,11 @@ contains
   endsubroutine resolution_get_resolved_intersection
   subroutine kill_resolution(resolution)
     type(resolution_type), intent(inout):: resolution
-    deallocate(resolution%rlink_r)
+    deallocate(resolution%rhead)
     deallocate(resolution%rlink)
     deallocate(resolution%plink_r)
     deallocate(resolution%plink)
     deallocate(resolution%encoded)
-    deallocate(resolution%pool_head)
-    deallocate(resolution%pool_cur)
-    deallocate(resolution%pool_tail)
     deallocate(resolution%par_in_good)
     resolution%secret = 0
   endsubroutine kill_resolution
