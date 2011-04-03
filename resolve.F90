@@ -19,6 +19,8 @@ module resolve_mod
     integer(i8b), allocatable:: encoded(:)
     integer(i8b), allocatable:: plink_r(:)  !< circular link on the same particle, reversed time order
     integer(i8b), allocatable:: plink(:)  !< circular link on the same particle, in time order
+    integer(i8b), allocatable:: rlink_r(:)  !< circular link on the same ray, reversed time order
+    integer(i8b), allocatable:: rlink(:)  !< circular link on the same ray, in time order
     integer(i8b) :: good(MAX_GOOD_LENGTH)
     integer(i8b) :: good_pindx(MAX_GOOD_LENGTH)
     logical(i1b), allocatable :: par_in_good(:)
@@ -61,6 +63,59 @@ contains
      r = a%t > b%t .and. race(a,b)
   end function cconflict
 
+  subroutine build_circular_list(key, indexx, link, link_r)
+     integer(i8b),allocatable, intent(inout) :: key(:), indexx(:), link(:), link_r(:)
+     integer(i8b) :: first, last, total_nnb, j, this
+     total_nnb = size(key, 1)
+     ! create the reversed link
+     first = indexx(total_nnb)
+     last =indexx(total_nnb)
+     do j = total_nnb - 1, 1, -1
+       this = indexx(j)
+       if (key(this) /= key(last)) then
+         link_r(last) = first
+         first = this
+         last = this
+       else
+         if (this >= last) then
+           stop "sort subroutine unstable!"
+         endif
+         link_r(last) = this
+         last = this
+       endif
+     enddo
+     link_r(last) = first
+
+     ! create the forward link
+     first = indexx(1)
+     last =indexx(1)
+     do j = 2, total_nnb, 1
+       this = indexx(j)
+       if (key(this) /= key(last)) then
+         link(last) = first
+         first = this
+         last = this
+       else
+         link(last) = this
+         last = this
+       endif
+     enddo
+     link(last) = first
+     print *, 'particle links created'
+
+     do j = 1, total_nnb, 1
+       if (link_r(j) == 0) then
+          stop "plink_r failed"
+       endif
+     enddo
+    
+     do j = 1, total_nnb, 1
+       if (link(j) == 0) then
+          stop "plink failed"
+       endif
+     enddo
+
+  endsubroutine build_circular_list
   subroutine prepare_resolution(resolution, raylists, par)
      type(raylist_type), intent(in), allocatable :: raylists(:)
      type(particle_type), intent(in), allocatable :: par(:)
@@ -113,54 +168,8 @@ contains
      ! note that mgrrnk is stable, thus the sorted array
      ! preserves the time ordering
      call mrgrnk(pindx, indexx)
+     call build_circular_list(pindx, indexx, resolution%plink, resolution%plink_r)
 
-     ! create the reversed link
-     first = indexx(total_nnb)
-     last =indexx(total_nnb)
-     do j = total_nnb - 1, 1, -1
-       this = indexx(j)
-       if (pindx(this) /= pindx(last)) then
-         resolution%plink_r(last) = first
-         first = this
-         last = this
-       else
-         if (this >= last) then
-           stop "sort subroutine unstable!"
-         endif
-         resolution%plink_r(last) = this
-         last = this
-       endif
-     enddo
-     resolution%plink_r(last) = first
-
-     ! create the forward link
-     first = indexx(1)
-     last =indexx(1)
-     do j = 2, total_nnb, 1
-       this = indexx(j)
-       if (pindx(this) /= pindx(last)) then
-         resolution%plink(last) = first
-         first = this
-         last = this
-       else
-         resolution%plink(last) = this
-         last = this
-       endif
-     enddo
-     resolution%plink(last) = first
-     print *, 'particle links created'
-
-     do j = 1, total_nnb, 1
-       if (resolution%plink_r(j) == 0) then
-          stop "plink_r failed"
-       endif
-     enddo
-    
-     do j = 1, total_nnb, 1
-       if (resolution%plink(j) == 0) then
-          stop "plink failed"
-       endif
-     enddo
      deallocate(pindx)
      deallocate(indexx)
 
